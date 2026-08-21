@@ -314,6 +314,31 @@ a {
   font-size: 11px;
 }
 
+.remittances-card { margin-top: 23px; background: #fff; border: 1px solid #e5ebf1; border-radius: 18px; box-shadow: 0 2px 4px rgba(24, 45, 74, 0.04); overflow: hidden; }
+.table-heading { display: flex; align-items: flex-start; justify-content: space-between; padding: 26px 28px 20px; }
+.table-heading h2 { margin: 0; color: #1b3555; font-size: 17px; }
+.table-heading p { margin: 5px 0 0; color: #95a8c0; font-size: 14px; }
+.filter-button, .review-button { border: 0; font-weight: 600; cursor: pointer; }
+.filter-button { padding: 8px 16px; color: #8da1bb; background: #fff; border: 1px solid #e1e9f1; border-radius: 18px; font-size: 13px; }
+.remittances-table-wrap { overflow-x: auto; border-top: 1px solid #edf1f5; }
+.remittances-table { width: 100%; min-width: 820px; border-collapse: collapse; text-align: left; }
+.remittances-table th { padding: 15px 22px; color: #c1cedd; font-size: 12px; font-weight: 700; letter-spacing: .2px; text-transform: uppercase; }
+.remittances-table td { padding: 13px 22px; color: #607590; border-top: 1px solid #f0f3f6; font-size: 14px; white-space: nowrap; }
+.driver-cell { display: flex; align-items: center; gap: 14px; }
+.driver-table-avatar { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; color: #fff; background: #203f68; border-radius: 50%; font-size: 11px; font-weight: 700; }
+.driver-cell strong, .driver-cell small, .expected-label { display: block; }
+.driver-cell strong, .collected-amount { color: #203552; font-size: 15px; }
+.driver-cell small, .expected-label { margin-top: 3px; color: #96a8c0; font-size: 12px; }
+.vehicle-cell, .time-cell { font-family: 'Space Mono', monospace; font-size: 13px !important; }
+.status-badge { display: inline-block; padding: 4px 13px; border: 1px solid; border-radius: 14px; font-size: 13px; font-weight: 600; }
+.status-paid { color: #069447; background: #effcf4; border-color: #b9efce; }
+.status-short { color: #c96b00; background: #fff9e9; border-color: #ffdb76; }
+.status-late { color: #ec5b16; background: #fff7ed; border-color: #ffd0a4; }
+.status-overdue { color: #e31725; background: #fff1f2; border-color: #ffc6ca; }
+.review-button { padding: 8px 16px; color: #f11d2b; background: #fff1f2; border-radius: 17px; font-size: 13px; }
+.action-cell { text-align: right; }
+
+
 @media (max-width: 700px) {
   .sidebar {
     width: 78px;
@@ -372,4 +397,9 @@ a {
     height: 205px;
     margin-top: 12px;
   }
+
+  .table-heading {
+    padding: 21px 16px 17px;
+  }
+
 }
