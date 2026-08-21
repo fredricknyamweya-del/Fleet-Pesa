@@ -1,3 +1,6 @@
+import { useState } from "react";
+import PaymentPromptModal from "../../features/paymentPrompt/PaymentPromptModal";
+
  import {
 	CartesianGrid,
 	Line,
@@ -53,6 +56,7 @@ function statusClass(status) {
 }
 
 export function Owner() {
+        const [selectedDriver, setSelectedDriver] = useState(null);       
 	return (
 		<div className="owner-dashboard">
 			<section className="revenue-card" aria-labelledby="weekly-revenue-title">
@@ -109,13 +113,30 @@ export function Owner() {
 									<td><strong className="collected-amount">{formatAmount(driver.collected)}</strong><small className="expected-label">of {formatAmount(driver.expected)}</small></td>
 									<td><span className={statusClass(driver.status)}>{driver.status}</span></td>
 									<td className="time-cell">{driver.time}</td>
-									<td className="action-cell">{driver.action && <button className="review-button" type="button">{driver.action}</button>}</td>
+									<td className="action-cell">
+    {["Short", "Late", "Overdue"].includes(driver.status) && (
+        <button
+            className="review-button"
+            type="button"
+            onClick={() => setSelectedDriver(driver)}
+        >
+            Prompt to Pay
+        </button>
+    )}
+</td>
 								</tr>
 							))}
 						</tbody>
 					</table>
 				</div>
 			</section>
+
+         {selectedDriver && (
+            <PaymentPromptModal
+                driver={selectedDriver}
+                onClose={() => setSelectedDriver(null)}
+            />
+              )}
 		</div>
 	)
 }
