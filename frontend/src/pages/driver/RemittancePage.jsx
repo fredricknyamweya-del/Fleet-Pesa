@@ -1,4 +1,3 @@
-
 import { useMemo, useState } from "react";
 import {
   ArrowLeft,
@@ -339,4 +338,3 @@ export default function RemittancePage() {
     </main>
   );
 }
-
