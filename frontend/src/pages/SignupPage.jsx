@@ -30,8 +30,8 @@ export default function SignupPage() {
     if (!/^07\d{8}$/.test(normalizePhone(phone))) {
       return "Enter a valid phone number, e.g. 0708419329";
     }
-    if (password.length < 6) {
-      return "Password must be at least 6 characters";
+    if (password.length < 8) {
+      return "Password must be at least 8 characters";
     }
     if (password !== confirmPassword) {
       return "Passwords do not match";
@@ -56,6 +56,7 @@ export default function SignupPage() {
         name: name.trim(),
         phone: normalizePhone(phone),
         password,
+        confirmPassword: confirmPassword,
       });
       navigate("/login", {
         state: { success: "Account created. You can now sign in." },
