@@ -510,6 +510,55 @@ a {
   background: #e6eef6;
 }
 
+.filter-dropdown {
+  position: relative;
+}
+
+.filter-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 10;
+  min-width: 140px;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #dce5ee;
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(16, 40, 68, .12);
+}
+
+.filter-menu-item {
+  display: block;
+  width: 100%;
+  padding: 8px 10px;
+  color: #203f68;
+  background: transparent;
+  border: none;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+}
+
+.filter-menu-item:hover {
+  background: #f2f6fa;
+}
+
+.filter-menu-item.active {
+  color: #12b75b;
+  background: rgba(18, 183, 91, .1);
+}
+
+.empty-filter-row {
+  padding: 20px;
+  color: #95a8c0;
+  font-size: 13px;
+  text-align: center;
+}
+
 .remittances-table-wrap {
   overflow-x: auto;
 }

@@ -119,7 +119,7 @@ pipenv run pytest
 ### Frontend (React)
 
 ```bash
-cd frontend
+cd frontend 
 npm install
 cp .env.example .env           # set VITE_API_URL=http://localhost:5000/api
 npm run dev                    # runs on http://localhost:5173
