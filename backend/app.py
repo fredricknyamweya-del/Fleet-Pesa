@@ -4,7 +4,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api
 from marshmallow import ValidationError
 from resources.health_resource import HealthResource
-from routes.vehicle_routes import vehicle_bp
+from routes.vehicle_routes import vehicle_bp, VehicleResource
 from resources.vehicle_resource import VehicleListResource
 
 from config import Config
@@ -29,6 +29,11 @@ def create_app(config_class=Config):
     api.add_resource(
     VehicleListResource,
     "/api/vehicles",
+    )
+
+    api.add_resource(
+    VehicleResource,
+    "/api/vehicles/<int:vehicle_id>",
     )
 
     CORS(app)
