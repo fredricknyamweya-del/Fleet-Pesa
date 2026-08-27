@@ -65,3 +65,20 @@ def update_fleet_owner():
 
 	db.session.commit()
 	return jsonify(fleet_owner=fleet_owner_schema.dump(fleet_owner))
+
+
+@fleet_owner_bp.delete("")
+@jwt_required()
+def delete_fleet_owner():
+	fleet_owner, error = get_current_fleet_owner()
+	if error:
+		return error
+
+	if fleet_owner.users:
+		return jsonify(
+			message="Cannot delete a fleet owner account with attached users"
+		), 409
+
+	db.session.delete(fleet_owner)
+	db.session.commit()
+	return "", 204
