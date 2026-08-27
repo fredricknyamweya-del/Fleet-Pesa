@@ -27,3 +27,41 @@ def get_current_fleet_owner():
 		return None, (jsonify(message="Fleet owner account not found"), 404)
 
 	return fleet_owner, None
+
+
+@fleet_owner_bp.get("")
+@jwt_required()
+def get_fleet_owner():
+	fleet_owner, error = get_current_fleet_owner()
+	if error:
+		return error
+
+	return jsonify(fleet_owner=fleet_owner_schema.dump(fleet_owner))
+
+
+@fleet_owner_bp.patch("")
+@jwt_required()
+def update_fleet_owner():
+	fleet_owner, error = get_current_fleet_owner()
+	if error:
+		return error
+
+	try:
+		data = fleet_owner_schema.load(
+			request.get_json(silent=True) or {},
+			partial=True,
+		)
+	except ValidationError as validation_error:
+		return jsonify(
+			message="Invalid fleet owner data",
+			errors=validation_error.messages,
+		), 400
+
+	if not data:
+		return jsonify(message="At least one fleet owner field is required"), 400
+
+	for field, value in data.items():
+		setattr(fleet_owner, field, value)
+
+	db.session.commit()
+	return jsonify(fleet_owner=fleet_owner_schema.dump(fleet_owner))
