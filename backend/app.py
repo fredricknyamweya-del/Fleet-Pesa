@@ -1,6 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from flask_restful import Api
 from marshmallow import ValidationError
 
 from config import Config
@@ -16,6 +17,8 @@ from schemas.user_schema import password_change_schema, profile_schema
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    
+    api = Api(app)
 
     CORS(app)
     db.init_app(app)
