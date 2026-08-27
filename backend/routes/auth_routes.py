@@ -1,4 +1,5 @@
 from flask import Blueprint, request, jsonify
+from flask_restful import Resource
 
 from flask_jwt_extended import (
     create_access_token,
@@ -28,102 +29,95 @@ auth_bp = Blueprint(
 # REGISTER
 # ============================================================
 
-@auth_bp.route("/register", methods=["POST"])
-def register():
-    """Register a new user."""
+class RegisterResource(Resource):
 
-    data = request.get_json(silent=True) or {}
+    def post(self):
+        """Register a new user."""
 
-    
-    # Validate request data with Marshmallow
-    
+        data = request.get_json(silent=True) or {}
 
-    try:
-        data = user_schema.load(data)
+        try:
+            data = user_schema.load(data)
 
-    except ValidationError as error:
-        return jsonify({"error": error.messages}), 400
+        except ValidationError as error:
+            return {"error": error.messages}, 400
 
-    username = data["username"]
-    name = data["name"]
-    password = data["password"]
+        username = data["username"]
+        name = data["name"]
+        password = data["password"]
 
-    # Normalize phone before checking for duplicates.
-    try:
-        phone = normalize_kenyan_phone(data["phone"])
+        try:
+            phone = normalize_kenyan_phone(data["phone"])
 
-    except ValueError as error:
-        return jsonify({"error": str(error)}), 400
+        except ValueError as error:
+            return {"error": str(error)}, 400
 
-    
-    # Role
-    
+        role_value = data.get("role", "driver")
 
-    role_value = data.get("role", "driver")
+        try:
+            role = UserRole(role_value)
 
-    try:
-        role = UserRole(role_value)
+        except ValueError:
+            return {"error": "Invalid user role."}, 400
 
-    except ValueError:
-        return jsonify({"error": "Invalid user role."}), 400
+        existing_username = User.query.filter_by(
+            username=username
+        ).first()
 
-    
-    # Check username
-    
+        if existing_username:
+            return {
+                "error": "That username already exists."
+            }, 409
 
-    existing_username = User.query.filter_by(username=username).first()
+        existing_phone = User.query.filter_by(
+            phone=phone
+        ).first()
 
-    if existing_username:
-        return jsonify({"error": "That username already exists."}), 409
+        if existing_phone:
+            return {
+                "error": "An account with that phone number already exists."
+            }, 409
 
-    
-    # Check phone
-    
+        try:
+            new_user = User(
+                username=username,
+                name=name,
+                phone=phone,
+                role=role.value,
+                fleet_owner_id=data.get("fleet_owner_id"),
+            )
 
-    existing_phone = User.query.filter_by( phone=phone).first()
+            new_user.set_password(password)
 
-    if existing_phone:
-        return jsonify({"error": "An account with that phone number already exists."}), 409
+            db.session.add(new_user)
+            db.session.commit()
 
-   
-    # Create user
-    
+            return {
+                "message": "Account created successfully.",
+                "user": new_user.to_dict(),
+            }, 201
 
-    try:
-        new_user = User(
-            username=username,
-            name=name,
-            phone=phone,
-            role=role.value,
-            fleet_owner_id=data.get("fleet_owner_id"),
-        )
+        except ValueError as error:
+            db.session.rollback()
+            return {"error": str(error)}, 400
 
-        new_user.set_password(password)
+        except IntegrityError as error:
+            db.session.rollback()
 
-        db.session.add(new_user)
-        db.session.commit()
+            print("DATABASE INTEGRITY ERROR:", error)
 
-        return jsonify({
-            "message": "Account created successfully.", "user": new_user.to_dict(),}), 201
+            return {
+                "error": "Username or phone number already exists."
+            }, 409
 
-    except ValueError as error:
-        db.session.rollback()
+        except Exception as error:
+            db.session.rollback()
 
-        return jsonify({"error": str(error)}), 400
+            print("REGISTRATION ERROR:", error)
 
-    except IntegrityError as error:
-        db.session.rollback()
-
-        print("DATABASE INTEGRITY ERROR:", error)
-
-        return jsonify({"error": "Username or phone number already exists."}), 409
-
-    except Exception as error:
-        db.session.rollback()
-
-        print("REGISTRATION ERROR:", error)
-
-        return jsonify({"error": "Unable to create account."}), 500
+            return {
+                "error": "Unable to create account."
+            }, 500
 
 
 # ============================================================

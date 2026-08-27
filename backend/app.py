@@ -13,7 +13,7 @@ from extensions import bcrypt, db, jwt, migrate
 from models.fleet_owner import FleetOwner
 from models.user import User
 
-from routes.auth_routes import auth_bp
+from routes.auth_routes import auth_bp, RegisterResource
 from routes.remittance_routes import (
     remittance_bp,
     VehicleRemittanceHistoryResource,
@@ -30,6 +30,11 @@ def create_app(config_class=Config):
     api = Api(app)
 
     api.add_resource(HealthResource, "/")
+
+    api.add_resource(
+        RegisterResource,
+        "/api/auth/register",
+    )
 
     api.add_resource(
         VehicleRemittanceHistoryResource,
