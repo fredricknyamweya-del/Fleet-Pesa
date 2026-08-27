@@ -17,6 +17,7 @@ from routes.auth_routes import auth_bp
 from routes.remittance_routes import (
     remittance_bp,
     VehicleRemittanceHistoryResource,
+    PaymentPromptResource,
 )
 
 from schemas.user_schema import password_change_schema, profile_schema
@@ -33,6 +34,11 @@ def create_app(config_class=Config):
     api.add_resource(
         VehicleRemittanceHistoryResource,
         "/api/vehicles/<int:vehicle_id>/remittances",
+    )
+
+    api.add_resource(
+        PaymentPromptResource,
+        "/api/remittances/<int:remittance_id>/prompt",
     )
 
     api.add_resource(

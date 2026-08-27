@@ -78,35 +78,58 @@ class VehicleRemittanceHistoryResource(Resource):
             ],
         }, 200
 
-@remittance_bp.post("/remittances/<int:remittance_id>/prompt")
-@jwt_required()
-def prompt_payment(remittance_id):
+class PaymentPromptResource(Resource):
+
+    @jwt_required()
+    def post(self, remittance_id):
         user_id = int(get_jwt_identity())
 
-        remittance = db.session.get(Remittance, remittance_id)
+        remittance = db.session.get(
+            Remittance,
+            remittance_id
+        )
 
         if remittance is None:
-                return jsonify(message="Remittance not found"), 404
+            return {
+                "message": "Remittance not found"
+            }, 404
 
-        vehicle = db.session.get(Vehicle, remittance.vehicle_id)
+        vehicle = db.session.get(
+            Vehicle,
+            remittance.vehicle_id
+        )
 
         if vehicle is None:
-                return jsonify(message="Vehicle not found"), 404
+            return {
+                "message": "Vehicle not found"
+            }, 404
 
         if vehicle.owner_id != user_id:
-                return jsonify(message="Only the vehicle owner can send a payment prompt"), 403
+            return {
+                "message": (
+                    "Only the vehicle owner can send "
+                    "a payment prompt"
+                )
+            }, 403
 
-        outstanding = remittance.expected_amount - remittance.actual_amount
+        outstanding = (
+            remittance.expected_amount
+            - remittance.actual_amount
+        )
 
         if outstanding <= 0:
-                return jsonify(message="This remittance has no outstanding amount"), 400
+            return {
+                "message": (
+                    "This remittance has no outstanding amount"
+                )
+            }, 400
 
         remittance.flagged_for_followup = True
+
         db.session.commit()
 
-        return jsonify(
-                message="Payment prompt sent successfully",
-                remittance=remittance.to_dict(),
-                outstanding_amount=float(outstanding),
-        ), 200
-
+        return {
+            "message": "Payment prompt sent successfully",
+            "remittance": remittance.to_dict(),
+            "outstanding_amount": float(outstanding),
+        }, 200
