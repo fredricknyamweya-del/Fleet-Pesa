@@ -1,6 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from marshmallow import ValidationError
+from flask_restful import Resource
 
 from extensions import db
 from models.user import User
@@ -13,16 +14,23 @@ vehicle_bp = Blueprint("vehicles", __name__, url_prefix="/api/vehicles")
 
 
 
-@vehicle_bp.get("/<int:vehicle_id>")
-@jwt_required()
-def get_vehicle(vehicle_id):
-	user_id = int(get_jwt_identity())
-	vehicle = db.session.get(Vehicle, vehicle_id)
-	if vehicle is None:
-		return jsonify(message="Vehicle not found"), 404
-	if vehicle.owner_id != user_id and vehicle.driver_id != user_id:
-		return jsonify(message="You do not have access to this vehicle"), 403
-	return jsonify(vehicle=vehicle_schema.dump(vehicle))
+class VehicleResource(Resource):
+
+    @jwt_required()
+    def get(self, vehicle_id):
+        user_id = int(get_jwt_identity())
+
+        vehicle = db.session.get(Vehicle, vehicle_id)
+
+        if vehicle is None:
+            return {"message": "Vehicle not found"}, 404
+
+        if vehicle.owner_id != user_id and vehicle.driver_id != user_id:
+            return {"message": "You do not have access to this vehicle"}, 403
+
+        return {
+            "vehicle": vehicle_schema.dump(vehicle)
+        }, 200
 
 
 @vehicle_bp.patch("/<int:vehicle_id>")
