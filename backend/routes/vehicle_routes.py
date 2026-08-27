@@ -89,16 +89,21 @@ class VehicleResource(Resource):
             "vehicle": vehicle_schema.dump(vehicle)
         }, 200
 
+    @jwt_required()
+    def delete(self, vehicle_id):
+        user_id = int(get_jwt_identity())
 
-@vehicle_bp.delete("/<int:vehicle_id>")
-@jwt_required()
-def delete_vehicle(vehicle_id):
-	user_id = int(get_jwt_identity())
-	vehicle = db.session.get(Vehicle, vehicle_id)
-	if vehicle is None:
-		return jsonify(message="Vehicle not found"), 404
-	if vehicle.owner_id != user_id:
-		return jsonify(message="Only the owning fleet owner can remove this vehicle"), 403
-	db.session.delete(vehicle)
-	db.session.commit()
-	return "", 204
+        vehicle = db.session.get(Vehicle, vehicle_id)
+
+        if vehicle is None:
+            return {"message": "Vehicle not found"}, 404
+
+        if vehicle.owner_id != user_id:
+            return {
+                "message": "Only the owning fleet owner can remove this vehicle"
+            }, 403
+
+        db.session.delete(vehicle)
+        db.session.commit()
+
+        return "", 204
