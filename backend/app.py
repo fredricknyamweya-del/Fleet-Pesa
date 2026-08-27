@@ -5,6 +5,7 @@ from flask_restful import Api
 from marshmallow import ValidationError
 from resources.health_resource import HealthResource
 from routes.vehicle_routes import vehicle_bp
+from resources.vehicle_resource import VehicleListResource
 
 from config import Config
 from extensions import bcrypt, db, jwt, migrate
@@ -24,6 +25,11 @@ def create_app(config_class=Config):
     api = Api(app)
 
     api.add_resource(HealthResource, "/")
+
+    api.add_resource(
+    VehicleListResource,
+    "/api/vehicles",
+    )
 
     CORS(app)
     db.init_app(app)

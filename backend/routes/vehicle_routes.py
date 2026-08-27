@@ -10,49 +10,7 @@ from schemas.vehicle_schema import vehicle_create_schema, vehicle_schema, vehicl
 vehicle_bp = Blueprint("vehicles", __name__, url_prefix="/api/vehicles")
 
 
-@vehicle_bp.get("")
-@jwt_required()
-def list_vehicles():
-	user_id = int(get_jwt_identity())
-	user = db.session.get(User, user_id)
-	if user is None:
-		return jsonify(message="User not found"), 404
-	if user.role != "owner":
-		return jsonify(message="Only owners can list fleet vehicles"), 403
-	vehicles = Vehicle.query.filter_by(owner_id=user_id).order_by(Vehicle.id).all()
-	return jsonify(vehicles=vehicles_schema.dump(vehicles))
 
-
-@vehicle_bp.post("")
-@jwt_required()
-def create_vehicle():
-	user_id = int(get_jwt_identity())
-	user = db.session.get(User, user_id)
-	if user is None:
-		return jsonify(message="User not found"), 404
-	if user.role != "owner":
-		return jsonify(message="Only owners can add vehicles"), 403
-	try:
-		data = vehicle_create_schema.load(request.get_json(silent=True) or {})
-	except ValidationError as error:
-		return jsonify(message="Invalid vehicle data", errors=error.messages), 400
-	if Vehicle.query.filter_by(plate_number=data["plate_number"]).first():
-		return jsonify(message="plate_number is already registered"), 409
-	driver_id = data.get("driver_id")
-	if driver_id is not None:
-		driver = db.session.get(User, driver_id)
-		if driver is None or driver.role != "driver":
-			return jsonify(message="driver_id must reference an existing driver"), 400
-	vehicle = Vehicle(
-		plate_number=data["plate_number"],
-		vehicle_type=data["vehicle_type"],
-		owner_id=user_id,
-		driver_id=driver_id,
-		is_active=data.get("is_active", True),
-	)
-	db.session.add(vehicle)
-	db.session.commit()
-	return jsonify(vehicle=vehicle_schema.dump(vehicle)), 201
 
 
 @vehicle_bp.get("/<int:vehicle_id>")
