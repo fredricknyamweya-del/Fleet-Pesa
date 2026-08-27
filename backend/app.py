@@ -4,6 +4,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api
 from marshmallow import ValidationError
 from resources.health_resource import HealthResource
+from routes.vehicle_routes import vehicle_bp
 
 from config import Config
 from extensions import bcrypt, db, jwt, migrate
@@ -12,6 +13,7 @@ from models.user import User
 
 from routes.auth_routes import auth_bp
 from routes.remittance_routes import remittance_bp
+from routes.vehicle_routes import vehicle_bp
 from schemas.user_schema import password_change_schema, profile_schema
 
 
@@ -32,6 +34,7 @@ def create_app(config_class=Config):
     # Register blueprints
     app.register_blueprint(auth_bp)
     app.register_blueprint(remittance_bp)
+    app.register_blueprint(vehicle_bp)
 
 
     # Update user profile
