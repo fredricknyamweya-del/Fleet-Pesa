@@ -32,34 +32,62 @@ class VehicleResource(Resource):
             "vehicle": vehicle_schema.dump(vehicle)
         }, 200
 
+    @jwt_required()
+    def patch(self, vehicle_id):
+        user_id = int(get_jwt_identity())
 
-@vehicle_bp.patch("/<int:vehicle_id>")
-@jwt_required()
-def update_vehicle(vehicle_id):
-	user_id = int(get_jwt_identity())
-	vehicle = db.session.get(Vehicle, vehicle_id)
-	if vehicle is None:
-		return jsonify(message="Vehicle not found"), 404
-	if vehicle.owner_id != user_id:
-		return jsonify(message="Only the owning fleet owner can update this vehicle"), 403
-	try:
-		data = vehicle_update_schema.load(request.get_json(silent=True) or {})
-	except ValidationError as error:
-		return jsonify(message="Invalid vehicle data", errors=error.messages), 400
-	if not data:
-		return jsonify(message="At least one vehicle field is required"), 400
-	if "plate_number" in data:
-		existing = Vehicle.query.filter(Vehicle.plate_number == data["plate_number"], Vehicle.id != vehicle_id).first()
-		if existing:
-			return jsonify(message="plate_number is already registered"), 409
-	if "driver_id" in data and data["driver_id"] is not None:
-		driver = db.session.get(User, data["driver_id"])
-		if driver is None or driver.role != "driver":
-			return jsonify(message="driver_id must reference an existing driver"), 400
-	for field, value in data.items():
-		setattr(vehicle, field, value)
-	db.session.commit()
-	return jsonify(vehicle=vehicle_schema.dump(vehicle))
+        vehicle = db.session.get(Vehicle, vehicle_id)
+
+        if vehicle is None:
+            return {"message": "Vehicle not found"}, 404
+
+        if vehicle.owner_id != user_id:
+            return {
+                "message": "Only the owning fleet owner can update this vehicle"
+            }, 403
+
+        try:
+            data = vehicle_update_schema.load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return {
+                "message": "Invalid vehicle data",
+                "errors": error.messages
+            }, 400
+
+        if not data:
+            return {
+                "message": "At least one vehicle field is required"
+            }, 400
+
+        if "plate_number" in data:
+            existing = Vehicle.query.filter(
+                Vehicle.plate_number == data["plate_number"],
+                Vehicle.id != vehicle_id
+            ).first()
+
+            if existing:
+                return {
+                    "message": "plate_number is already registered"
+                }, 409
+
+        if "driver_id" in data and data["driver_id"] is not None:
+            driver = db.session.get(User, data["driver_id"])
+
+            if driver is None or driver.role != "driver":
+                return {
+                    "message": "driver_id must reference an existing driver"
+                }, 400
+
+        for field, value in data.items():
+            setattr(vehicle, field, value)
+
+        db.session.commit()
+
+        return {
+            "vehicle": vehicle_schema.dump(vehicle)
+        }, 200
 
 
 @vehicle_bp.delete("/<int:vehicle_id>")
