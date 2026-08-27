@@ -24,9 +24,9 @@ with app.app_context():
 	db.session.add_all([owner, driver_one, driver_two])
 	db.session.commit()
 
-	vehicle_one = Vehicle(plate_number="KDA 001A", vehicle_type="matatu", owner_id=owner.id, driver_id=driver_one.id)
-	vehicle_two = Vehicle(plate_number="KDB 002B", vehicle_type="matatu", owner_id=owner.id, driver_id=driver_two.id)
-	vehicle_three = Vehicle(plate_number="KDC 003C", vehicle_type="minibus", owner_id=owner.id)
+	vehicle_one = Vehicle(plate_number="KDA 001A", vehicle_type="matatu", fleet_owner_id=owner.id)
+	vehicle_two = Vehicle(plate_number="KDB 002B", vehicle_type="matatu", fleet_owner_id=owner.id)
+	vehicle_three = Vehicle(plate_number="KDC 003C", vehicle_type="minibus", fleet_owner_id=owner.id)
 
 	db.session.add_all([vehicle_one, vehicle_two, vehicle_three])
 	db.session.commit()

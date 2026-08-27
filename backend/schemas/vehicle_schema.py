@@ -6,7 +6,6 @@ PLATE_NUMBER_REGEX = r"^[A-Z]{2,3}\s?\d{3}[A-Z]$"
 class VehicleCreateSchema(Schema):
 	plate_number = fields.Str(required=True, validate=validate.Regexp(PLATE_NUMBER_REGEX, error="plate_number must look like KDA 001A"))
 	vehicle_type = fields.Str(required=True, validate=validate.OneOf(("matatu", "minibus", "bus")))
-	driver_id = fields.Int(required=False, allow_none=True, load_default=None, validate=validate.Range(min=1))
 	is_active = fields.Bool(required=False, load_default=True)
 
 
@@ -16,7 +15,6 @@ vehicle_create_schema = VehicleCreateSchema()
 class VehicleUpdateSchema(Schema):
 	plate_number = fields.Str(required=False, validate=validate.Regexp(PLATE_NUMBER_REGEX, error="plate_number must look like KDA 001A"))
 	vehicle_type = fields.Str(required=False, validate=validate.OneOf(("matatu", "minibus", "bus")))
-	driver_id = fields.Int(required=False, allow_none=True, validate=validate.Range(min=1))
 	is_active = fields.Bool(required=False)
 
 
@@ -27,8 +25,7 @@ class VehicleSchema(Schema):
 	id = fields.Int(dump_only=True)
 	plate_number = fields.Str()
 	vehicle_type = fields.Str()
-	owner_id = fields.Int()
-	driver_id = fields.Int(allow_none=True)
+	fleet_owner_id = fields.Int()
 	is_active = fields.Bool()
 
 
