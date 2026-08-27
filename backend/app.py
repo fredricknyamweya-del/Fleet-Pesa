@@ -3,6 +3,7 @@ from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api
 from marshmallow import ValidationError
+
 from resources.health_resource import HealthResource
 from routes.vehicle_routes import vehicle_bp, VehicleResource
 from resources.vehicle_resource import VehicleListResource
@@ -13,27 +14,35 @@ from models.fleet_owner import FleetOwner
 from models.user import User
 
 from routes.auth_routes import auth_bp
-from routes.remittance_routes import remittance_bp
-from routes.vehicle_routes import vehicle_bp
+from routes.remittance_routes import (
+    remittance_bp,
+    VehicleRemittanceHistoryResource,
+)
+
 from schemas.user_schema import password_change_schema, profile_schema
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
     api = Api(app)
 
     api.add_resource(HealthResource, "/")
 
     api.add_resource(
-    VehicleListResource,
-    "/api/vehicles",
+        VehicleRemittanceHistoryResource,
+        "/api/vehicles/<int:vehicle_id>/remittances",
     )
 
     api.add_resource(
-    VehicleResource,
-    "/api/vehicles/<int:vehicle_id>",
+        VehicleListResource,
+        "/api/vehicles",
+    )
+
+    api.add_resource(
+        VehicleResource,
+        "/api/vehicles/<int:vehicle_id>",
     )
 
     CORS(app)
