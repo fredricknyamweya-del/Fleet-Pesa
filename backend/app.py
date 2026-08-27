@@ -3,6 +3,7 @@ from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api
 from marshmallow import ValidationError
+from resources.health_resource import HealthResource
 
 from config import Config
 from extensions import bcrypt, db, jwt, migrate
@@ -20,6 +21,8 @@ def create_app(config_class=Config):
     
     api = Api(app)
 
+    api.add_resource(HealthResource, "/")
+
     CORS(app)
     db.init_app(app)
     bcrypt.init_app(app)
@@ -30,12 +33,6 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(remittance_bp)
 
-    # Home / health check
-    @app.route("/")
-    def home():
-        return jsonify({
-            "message": "Fleet-Pesa API is running"
-        })
 
     # Update user profile
     @app.patch("/api/users/me")
