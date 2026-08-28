@@ -3,7 +3,6 @@ from marshmallow import Schema, fields, validate
 
 class RemittanceCreateSchema(Schema):
 	vehicle_id = fields.Int(required=True, validate=validate.Range(min=1))
-	driver_id = fields.Int(required=True, validate=validate.Range(min=1))
 	expected_amount = fields.Decimal(required=True, places=2, as_string=False, validate=validate.Range(min=0))
 	actual_amount = fields.Decimal(required=True, places=2, as_string=False, validate=validate.Range(min=0))
 	status = fields.Str(required=False, validate=validate.OneOf(("paid", "late", "short")))

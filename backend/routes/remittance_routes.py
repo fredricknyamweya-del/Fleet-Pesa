@@ -2,10 +2,17 @@ from datetime import datetime, time, timezone
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
+from marshmallow import ValidationError
 
 from extensions import db
 from models.remittance import Remittance
+from models.user import User
 from models.vehicle import Vehicle
+from schemas.remittance_schema import (
+    remittance_create_schema,
+    remittance_schema,
+    remittance_update_schema,
+)
 
 remittance_bp = Blueprint("remittances", __name__, url_prefix="/api")
 
@@ -79,3 +86,72 @@ def vehicle_remittance_history(vehicle_id):
         },
         remittances=[item.to_dict() for item in remittances],
     )
+
+
+@remittance_bp.post("/remittances")
+@jwt_required()
+def create_remittance():
+    user_id = int(get_jwt_identity())
+    user = db.session.get(User, user_id)
+    if user is None:
+        return jsonify(message="User not found"), 404
+    if user.role != "driver":
+        return jsonify(message="Only drivers can submit remittances"), 403
+
+    try:
+        data = remittance_create_schema.load(request.get_json(silent=True) or {})
+    except ValidationError as error:
+        return jsonify(message="Invalid remittance data", errors=error.messages), 400
+
+    vehicle = db.session.get(Vehicle, data["vehicle_id"])
+    if vehicle is None:
+        return jsonify(message="Vehicle not found"), 404
+    if not vehicle.is_active:
+        return jsonify(message="Cannot submit a remittance for an inactive vehicle"), 400
+
+    # driver_id always comes from the token, never trust the request body,
+    # so a driver can't submit a remittance on someone else's behalf.
+    status = data.get("status")
+    if not status:
+        status = "paid" if data["actual_amount"] >= data["expected_amount"] else "short"
+
+    remittance = Remittance(
+        vehicle_id=vehicle.id,
+        driver_id=user_id,
+        expected_amount=data["expected_amount"],
+        actual_amount=data["actual_amount"],
+        status=status,
+        payment_status=data.get("payment_status", "pending"),
+        mpesa_reference=data.get("mpesa_reference"),
+        mpesa_transaction_code=data.get("mpesa_transaction_code"),
+        flagged_for_followup=data.get("flagged_for_followup", False),
+    )
+    db.session.add(remittance)
+    db.session.commit()
+    return jsonify(remittance=remittance_schema.dump(remittance)), 201
+
+
+@remittance_bp.patch("/remittances/<int:remittance_id>")
+@jwt_required()
+def update_remittance(remittance_id):
+    user_id = int(get_jwt_identity())
+
+    remittance = db.session.get(Remittance, remittance_id)
+    if remittance is None:
+        return jsonify(message="Remittance not found"), 404
+
+    vehicle = db.session.get(Vehicle, remittance.vehicle_id)
+    if vehicle is None or vehicle.fleet_owner_id != user_id:
+        return jsonify(message="Only the owning fleet owner can update this remittance"), 403
+
+    try:
+        data = remittance_update_schema.load(request.get_json(silent=True) or {})
+    except ValidationError as error:
+        return jsonify(message="Invalid remittance data", errors=error.messages), 400
+    if not data:
+        return jsonify(message="At least one remittance field is required"), 400
+
+    for field, value in data.items():
+        setattr(remittance, field, value)
+    db.session.commit()
+    return jsonify(remittance=remittance_schema.dump(remittance))

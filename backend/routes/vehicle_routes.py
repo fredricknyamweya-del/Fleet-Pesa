@@ -110,6 +110,11 @@ def delete_vehicle(vehicle_id):
 		return jsonify(message="Vehicle not found"), 404
 	if vehicle.fleet_owner_id != user_id:
 		return jsonify(message="Only the owning fleet owner can remove this vehicle"), 403
+	has_remittances = Remittance.query.filter_by(vehicle_id=vehicle_id).first() is not None
+	if has_remittances:
+		return jsonify(
+			message="Cannot delete a vehicle with remittance history. Mark it inactive instead."
+		), 409
 	db.session.delete(vehicle)
 	db.session.commit()
 	return "", 204
