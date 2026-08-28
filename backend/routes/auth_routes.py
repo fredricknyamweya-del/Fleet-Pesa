@@ -199,3 +199,37 @@ class CurrentUserResource(Resource):
         return {
             "user": user.to_dict()
         }, 200
+
+class RefreshTokenResource(Resource):
+
+    @jwt_required(refresh=True)
+    def post(self):
+        """Generate a new access token from a refresh token."""
+
+        user_id = get_jwt_identity()
+
+        try:
+            user_id = int(user_id)
+
+        except (TypeError, ValueError):
+            return {
+                "error": "Invalid authentication token."
+            }, 401
+
+        user = db.session.get(User, user_id)
+
+        if not user:
+            return {
+                "error": "User account not found."
+            }, 404
+
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={
+                "role": user.role
+            },
+        )
+
+        return {
+            "access_token": access_token
+        }, 200

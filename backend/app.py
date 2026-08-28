@@ -18,6 +18,7 @@ from routes.auth_routes import (
     RegisterResource,
     LoginResource,
     CurrentUserResource,
+    RefreshTokenResource,
 )
 from routes.remittance_routes import (
     remittance_bp,
@@ -49,6 +50,11 @@ def create_app(config_class=Config):
     api.add_resource(
         CurrentUserResource,
         "/api/auth/me",
+    )
+
+    api.add_resource(
+        RefreshTokenResource,
+        "/api/auth/refresh",
     )
 
     api.add_resource(
