@@ -20,6 +20,7 @@ from routes.auth_routes import (
     CurrentUserResource,
     RefreshTokenResource,
     UserProfileResource,
+    PasswordChangeResource,
 )
 from routes.remittance_routes import (
     remittance_bp,
@@ -64,6 +65,11 @@ def create_app(config_class=Config):
     )
 
     api.add_resource(
+        PasswordChangeResource,
+        "/api/users/me/password",
+    )
+
+    api.add_resource(
         VehicleRemittanceHistoryResource,
         "/api/vehicles/<int:vehicle_id>/remittances",
     )
@@ -93,56 +99,6 @@ def create_app(config_class=Config):
     app.register_blueprint(auth_bp)
     app.register_blueprint(remittance_bp)
     app.register_blueprint(vehicle_bp)
-
-
-    # Change password
-    @app.patch("/api/users/me/password")
-    @jwt_required()
-    def change_password():
-        try:
-            data = password_change_schema.load(
-                request.get_json(silent=True) or {}
-            )
-        except ValidationError as error:
-            return jsonify(
-                message="Invalid password data",
-                errors=error.messages
-            ), 400
-
-        user = db.session.get(
-            User,
-            int(get_jwt_identity())
-        )
-
-        if user is None:
-            return jsonify(
-                message="User not found"
-            ), 404
-
-        if not user.check_password(
-            data["current_password"]
-        ):
-            return jsonify(
-                message="Current password is incorrect"
-            ), 401
-
-        if (
-            data["current_password"]
-            == data["new_password"]
-        ):
-            return jsonify(
-                message="New password must be different from current password"
-            ), 400
-
-        user.set_password(
-            data["new_password"]
-        )
-
-        db.session.commit()
-
-        return jsonify(
-            message="Password updated successfully"
-        )
 
     return app
 

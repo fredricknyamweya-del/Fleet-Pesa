@@ -17,6 +17,7 @@ from schemas.user_schema import (
     UserSchema,
     user_schema,
     profile_schema,
+    password_change_schema,
 )
 from utils.phone import normalize_kenyan_phone
 # from utils.phone import normalize_kenyan_phone
@@ -293,4 +294,53 @@ class UserProfileResource(Resource):
 
         return {
             "user": user.to_dict()
+        }, 200
+
+class PasswordChangeResource(Resource):
+
+    @jwt_required()
+    def patch(self):
+        try:
+            data = password_change_schema.load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return {
+                "message": "Invalid password data",
+                "errors": error.messages,
+            }, 400
+
+        user = db.session.get(
+            User,
+            int(get_jwt_identity())
+        )
+
+        if user is None:
+            return {
+                "message": "User not found"
+            }, 404
+
+        if not user.check_password(
+            data["current_password"]
+        ):
+            return {
+                "message": "Current password is incorrect"
+            }, 401
+
+        if (
+            data["current_password"]
+            == data["new_password"]
+        ):
+            return {
+                "message": "New password must be different from current password"
+            }, 400
+
+        user.set_password(
+            data["new_password"]
+        )
+
+        db.session.commit()
+
+        return {
+            "message": "Password updated successfully"
         }, 200
