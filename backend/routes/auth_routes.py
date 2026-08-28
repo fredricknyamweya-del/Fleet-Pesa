@@ -172,3 +172,30 @@ class LoginResource(Resource):
             "refresh_token": refresh_token,
             "user": user.to_dict(),
         }, 200
+
+class CurrentUserResource(Resource):
+
+    @jwt_required()
+    def get(self):
+        """Return the currently authenticated user."""
+
+        user_id = get_jwt_identity()
+
+        try:
+            user_id = int(user_id)
+
+        except (TypeError, ValueError):
+            return {
+                "error": "Invalid authentication token."
+            }, 401
+
+        user = db.session.get(User, user_id)
+
+        if not user:
+            return {
+                "error": "User account not found."
+            }, 404
+
+        return {
+            "user": user.to_dict()
+        }, 200

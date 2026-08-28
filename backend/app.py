@@ -17,6 +17,7 @@ from routes.auth_routes import (
     auth_bp,
     RegisterResource,
     LoginResource,
+    CurrentUserResource,
 )
 from routes.remittance_routes import (
     remittance_bp,
@@ -43,6 +44,11 @@ def create_app(config_class=Config):
     api.add_resource(
         LoginResource,
         "/api/auth/login",
+    )
+
+    api.add_resource(
+        CurrentUserResource,
+        "/api/auth/me",
     )
 
     api.add_resource(
