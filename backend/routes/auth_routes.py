@@ -13,7 +13,11 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models.user import User, UserRole
-from schemas.user_schema import UserSchema, user_schema
+from schemas.user_schema import (
+    UserSchema,
+    user_schema,
+    profile_schema,
+)
 from utils.phone import normalize_kenyan_phone
 # from utils.phone import normalize_kenyan_phone
 
@@ -232,4 +236,61 @@ class RefreshTokenResource(Resource):
 
         return {
             "access_token": access_token
+        }, 200
+
+class UserProfileResource(Resource):
+
+    @jwt_required()
+    def patch(self):
+        try:
+            data = profile_schema.load(
+                request.get_json(silent=True) or {}
+            )
+        except ValidationError as error:
+            return {
+                "message": "Invalid profile data",
+                "errors": error.messages,
+            }, 400
+
+        if not data:
+            return {
+                "message": "At least one profile field is required"
+            }, 400
+
+        user = db.session.get(
+            User,
+            int(get_jwt_identity())
+        )
+
+        if user is None:
+            return {
+                "message": "User not found"
+            }, 404
+
+        if (
+            "notification_preference" in data
+            and user.role != "owner"
+        ):
+            return {
+                "message": "Only owners can update notification preferences"
+            }, 403
+
+        if (
+            "phone" in data
+            and User.query.filter(
+                User.phone == data["phone"],
+                User.id != user.id
+            ).first()
+        ):
+            return {
+                "message": "phone is already registered"
+            }, 409
+
+        for field, value in data.items():
+            setattr(user, field, value)
+
+        db.session.commit()
+
+        return {
+            "user": user.to_dict()
         }, 200

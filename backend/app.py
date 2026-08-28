@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from flask_restful import Api
+from flask_restful import Api, Resource
 from marshmallow import ValidationError
 
 from resources.health_resource import HealthResource
@@ -19,6 +19,7 @@ from routes.auth_routes import (
     LoginResource,
     CurrentUserResource,
     RefreshTokenResource,
+    UserProfileResource,
 )
 from routes.remittance_routes import (
     remittance_bp,
@@ -58,6 +59,11 @@ def create_app(config_class=Config):
     )
 
     api.add_resource(
+        UserProfileResource,
+        "/api/users/me",
+    )
+
+    api.add_resource(
         VehicleRemittanceHistoryResource,
         "/api/vehicles/<int:vehicle_id>/remittances",
     )
@@ -88,63 +94,6 @@ def create_app(config_class=Config):
     app.register_blueprint(remittance_bp)
     app.register_blueprint(vehicle_bp)
 
-
-    # Update user profile
-    @app.patch("/api/users/me")
-    @jwt_required()
-    def update_profile():
-        try:
-            data = profile_schema.load(
-                request.get_json(silent=True) or {}
-            )
-        except ValidationError as error:
-            return jsonify(
-                message="Invalid profile data",
-                errors=error.messages
-            ), 400
-
-        if not data:
-            return jsonify(
-                message="At least one profile field is required"
-            ), 400
-
-        user = db.session.get(
-            User,
-            int(get_jwt_identity())
-        )
-
-        if user is None:
-            return jsonify(
-                message="User not found"
-            ), 404
-
-        if (
-            "notification_preference" in data
-            and user.role != "owner"
-        ):
-            return jsonify(
-                message="Only owners can update notification preferences"
-            ), 403
-
-        if (
-            "phone" in data
-            and User.query.filter(
-                User.phone == data["phone"],
-                User.id != user.id
-            ).first()
-        ):
-            return jsonify(
-                message="phone is already registered"
-            ), 409
-
-        for field, value in data.items():
-            setattr(user, field, value)
-
-        db.session.commit()
-
-        return jsonify(
-            user=user.to_dict()
-        )
 
     # Change password
     @app.patch("/api/users/me/password")
