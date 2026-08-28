@@ -124,110 +124,51 @@ class RegisterResource(Resource):
 # LOGIN
 # ============================================================
 
-@auth_bp.route("/login", methods=["POST"])
-def login():
-    """Authenticate a user and return JWT tokens."""
+class LoginResource(Resource):
 
-    data = request.get_json(silent=True) or {}
+    def post(self):
+        """Authenticate a user and return JWT tokens."""
 
-    phone = data.get("phone")
-    password = data.get("password")
+        data = request.get_json(silent=True) or {}
 
-    # --------------------------------------------------------
-    # Basic request validation
-    # --------------------------------------------------------
+        phone = data.get("phone")
+        password = data.get("password")
 
-    if not isinstance(phone, str) or not phone.strip():
-        return jsonify({"error": "Phone number is required."}), 400
+        if not isinstance(phone, str) or not phone.strip():
+            return {"error": "Phone number is required."}, 400
 
-    if not isinstance(password, str) or not password:
-        return jsonify({"error": "Password is required."}), 400
+        if not isinstance(password, str) or not password:
+            return {"error": "Password is required."}, 400
 
-    # --------------------------------------------------------
-    # Normalize phone
-    # --------------------------------------------------------
+        try:
+            phone = normalize_kenyan_phone(phone)
 
-    try:
-        phone = normalize_kenyan_phone(phone)
+        except ValueError:
+            return {
+                "error": "Invalid phone number or password."
+            }, 401
 
-    except ValueError:
-        return jsonify({"error": "Invalid phone number or password."}), 401
+        user = User.query.filter_by(phone=phone).first()
 
-    # --------------------------------------------------------
-    # Find user
-    # --------------------------------------------------------
+        if not user or not user.check_password(password):
+            return {
+                "error": "Invalid phone number or password."
+            }, 401
 
-    user = User.query.filter_by(phone=phone).first()
+        access_token = create_access_token(
+            identity=str(user.id),
+            additional_claims={
+                "role": user.role
+            },
+        )
 
-    
-    # Verify password
-    
+        refresh_token = create_refresh_token(
+            identity=str(user.id)
+        )
 
-    if not user or not user.check_password(password):
-        return jsonify({ "error": "Invalid phone number or password."}), 401
-
-    
-    # Create tokens
-    
-
-    access_token = create_access_token( identity=str(user.id), additional_claims={ "role": user.role},)
-
-    refresh_token = create_refresh_token(identity=str(user.id),)
-
-    return jsonify({
-        "message": "Login successful.",
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "user": user.to_dict(),
-    }), 200
-
-
-
-# CURRENT USER
-
-
-@auth_bp.route("/me", methods=["GET"])
-@jwt_required()
-def get_current_user():
-    """Return the currently authenticated user."""
-
-    user_id = get_jwt_identity()
-
-    try:
-        user_id = int(user_id)
-
-    except (TypeError, ValueError):
-        return jsonify({"error": "Invalid authentication token."}), 401
-
-    user = db.session.get(User, user_id)
-
-    if not user:
-        return jsonify({"error": "User account not found."}), 404
-
-    return jsonify({"user": user.to_dict(),}), 200
-
-
-# REFRESH ACCESS TOKEN
-
-
-@auth_bp.route("/refresh", methods=["POST"])
-@jwt_required(refresh=True)
-def refresh():
-    """Generate a new access token from a refresh token."""
-
-    user_id = get_jwt_identity()
-
-    try:
-        user_id = int(user_id)
-
-    except (TypeError, ValueError):
-        return jsonify({ "error": "Invalid authentication token."}), 401
-
-    user = db.session.get(User, user_id)
-
-    if not user:
-        return jsonify({"error": "User account not found."}), 404
-
-    access_token = create_access_token( identity=str(user.id), additional_claims={ "role": user.role},)
-
-    return jsonify({ "access_token": access_token,}), 200
+        return {
+            "message": "Login successful.",
+            "access_token": access_token,
+            "refresh_token": refresh_token,
+            "user": user.to_dict(),
+        }, 200
