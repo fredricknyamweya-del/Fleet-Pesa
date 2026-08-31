@@ -52,7 +52,15 @@ class VehicleList(Resource):
 		total = query.count()
 		vehicles = query.limit(per_page).offset((page - 1) * per_page).all()
 
-		return {"vehicles": vehicles_schema.dump(vehicles)}, 200
+		return {
+			"vehicles": vehicles_schema.dump(vehicles),
+			"pagination": {
+				"page": page,
+				"per_page": per_page,
+				"total": total,
+				"total_pages": (total + per_page - 1) // per_page if total else 0,
+			},
+		}, 200
 
 	@jwt_required()
 	def post(self):
