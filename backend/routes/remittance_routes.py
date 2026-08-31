@@ -61,7 +61,15 @@ class RemittanceList(Resource):
         start = (page - 1) * per_page
         page_items = visible[start:start + per_page]
 
-        return {"remittances": remittances_schema.dump(page_items)}, 200
+        return {
+            "remittances": remittances_schema.dump(page_items),
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": (total + per_page - 1) // per_page if total else 0,
+            },
+        }, 200
 
     @jwt_required()
     def post(self):
