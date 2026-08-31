@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft, History, Loader2 } from "lucide-react";
 import useRemittanceHistory from "../hooks/useRemittanceHistory.js";
 import { MOCK_VEHICLES } from "../data/mockVehicles.js";
+import Pagination from "../components/shared/Pagination.jsx";
 
 function currency(value) { return `KES ${Number(value || 0).toLocaleString("en-KE")}`; }
 function dateLabel(value) { return new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); }
