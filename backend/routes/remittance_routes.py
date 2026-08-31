@@ -169,13 +169,17 @@ class VehicleRemittanceHistory(Resource):
         page = max(1, page)
         per_page = max(1, min(per_page, 100))
 
+        total = len(records)
+        start = (page - 1) * per_page
+        page_items = records[start:start + per_page]
+
         return {
             "vehicle": {
                 "id": vehicle.id,
                 "plate_number": vehicle.plate_number,
                 "vehicle_type": vehicle.vehicle_type,
             },
-            "remittances": remittances_schema.dump(records),
+            "remittances": remittances_schema.dump(page_items),
         }, 200
 
 
