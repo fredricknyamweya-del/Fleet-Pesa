@@ -3,17 +3,15 @@ from marshmallow import Schema, fields, validate
 
 class FarePaymentCreateSchema(Schema):
     vehicle_id = fields.Int(required=True, validate=validate.Range(min=1))
-    customer_phone = fields.Str(required=True, validate=validate.Length(max=15))
+    customer_phone = fields.Str(
+        required=True,
+        validate=validate.Length(max=15),
+    )
     amount = fields.Decimal(
         required=True,
         places=2,
         as_string=False,
         validate=validate.Range(min=0),
-    )
-    mpesa_reference = fields.Str(
-        required=False,
-        allow_none=True,
-        validate=validate.Length(max=100),
     )
 
 
