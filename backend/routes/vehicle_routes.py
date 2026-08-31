@@ -32,7 +32,6 @@ class VehicleList(Resource):
 				fleet_owner_id=user.fleet_owner_id,
 				is_active=True,
 			).order_by(Vehicle.id)
-			vehicles = query.all()
 		else:
 			query = (
 				Vehicle.query
@@ -44,12 +43,14 @@ class VehicleList(Resource):
 				)
 				.order_by(Vehicle.id)
 			)
-			vehicles = query.all()
 
 		page = request.args.get("page", 1, type=int)
 		per_page = request.args.get("per_page", 20, type=int)
 		page = max(1, page)
 		per_page = max(1, min(per_page, 100))
+
+		total = query.count()
+		vehicles = query.limit(per_page).offset((page - 1) * per_page).all()
 
 		return {"vehicles": vehicles_schema.dump(vehicles)}, 200
 
