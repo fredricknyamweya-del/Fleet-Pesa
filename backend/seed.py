@@ -15,7 +15,7 @@ models exist in the codebase. Written ahead of that so it's ready
 to run the moment those land.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from app import app
 from extensions import db
@@ -145,7 +145,7 @@ def seed():
         #    preserved on reassignment) and OPEN assignments (current
         #    driver) for the active vehicles.
         # ------------------------------------------------------------------
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
 
         # vehicle_kaa: was driven by Alex, reassigned to James -- history preserved
         assignment_kaa_closed = DriverAssignment(

@@ -1,7 +1,7 @@
 import pytest
 from flask import Flask
 
-from extensions import db, bcrypt, jwt, migrate, api
+from extensions import db
 import seed as seed_module
 from app import create_app
 
@@ -35,7 +35,7 @@ class ApiTestConfig:
     TESTING = True
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    JWT_SECRET_KEY = "test-secret"
+    JWT_SECRET_KEY = "fleetpesa-test-secret-key-2026-secure"
     MPESA_CALLBACK_SECRET = "test-mpesa-secret"
 
 @pytest.fixture

@@ -1,11 +1,11 @@
 from flask import Flask, request
 from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from flask_restful import Resource
+from flask_restful import Api, Resource
 from marshmallow import ValidationError
 
 from config import Config
-from extensions import api, bcrypt, db, jwt, migrate
+from extensions import db, bcrypt, jwt, migrate
 from models.user import User
 from routes.auth_routes import Login, Me, Refresh, Signup
 from routes.fare_payment_routes import (
@@ -99,6 +99,8 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    api = Api(app)
+
     api.add_resource(Signup, "/api/auth/signup")
     api.add_resource(Login, "/api/auth/login")
     api.add_resource(Refresh, "/api/auth/refresh")
@@ -136,7 +138,6 @@ def create_app(config_class=Config):
     bcrypt.init_app(app)
     jwt.init_app(app)
     migrate.init_app(app, db)
-    api.init_app(app)
     return app
 
 
