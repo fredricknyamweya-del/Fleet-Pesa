@@ -54,6 +54,7 @@ class RemittanceList(Resource):
 
         page = request.args.get("page", 1, type=int)
         per_page = request.args.get("per_page", 20, type=int)
+        page = max(1, page)
 
         return {"remittances": remittances_schema.dump(visible)}, 200
 
