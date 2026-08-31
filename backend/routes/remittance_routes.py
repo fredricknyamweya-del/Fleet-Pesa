@@ -50,9 +50,9 @@ class RemittanceList(Resource):
             if status not in ("paid", "short"):
                 return {"message": "status must be paid, short or all"}, 400
             query = query.filter_by(status=status)
-        return {"remittances": remittances_schema.dump(
-            _visible_remittances(user, query)
-        )}, 200
+        visible = _visible_remittances(user, query)
+
+        return {"remittances": remittances_schema.dump(visible)}, 200
 
     @jwt_required()
     def post(self):
