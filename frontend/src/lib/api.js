@@ -280,7 +280,7 @@ export async function getVehicleRemittanceHistory(
 ) {
   try {
     const response = await api.get(
-      `/vehicles/${vehicleId}/remittance-history`
+      `/vehicles/${vehicleId}/remittances`
     );
 
     return response.data;
