@@ -28,10 +28,11 @@ class VehicleList(Resource):
 		if user is None:
 			return {"message": "User not found"}, 404
 		if user.role == "owner":
-			vehicles = Vehicle.query.filter_by(
+			query = Vehicle.query.filter_by(
 				fleet_owner_id=user.fleet_owner_id,
 				is_active=True,
-			).order_by(Vehicle.id).all()
+			).order_by(Vehicle.id)
+			vehicles = query.all()
 		else:
 			vehicles = (
 				Vehicle.query
