@@ -34,7 +34,7 @@ class VehicleList(Resource):
 			).order_by(Vehicle.id)
 			vehicles = query.all()
 		else:
-			vehicles = (
+			query = (
 				Vehicle.query
 				.join(DriverAssignment)
 				.filter(
@@ -43,8 +43,8 @@ class VehicleList(Resource):
 					Vehicle.is_active.is_(True),
 				)
 				.order_by(Vehicle.id)
-				.all()
 			)
+			vehicles = query.all()
 		return {"vehicles": vehicles_schema.dump(vehicles)}, 200
 
 	@jwt_required()
