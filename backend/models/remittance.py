@@ -8,7 +8,6 @@ class Remittance(db.Model):
 
 	id = db.Column(db.Integer, primary_key=True)
 	vehicle_id = db.Column(db.Integer, db.ForeignKey("vehicles.id"), nullable=False)
-	driver_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
 	expected_amount = db.Column(db.Numeric(10, 2), nullable=False)
 	actual_amount = db.Column(db.Numeric(10, 2), nullable=False)
 	status = db.Column(db.String(10), nullable=False)
@@ -16,7 +15,11 @@ class Remittance(db.Model):
 	mpesa_reference = db.Column(db.String(50))
 	mpesa_transaction_code = db.Column(db.String(20))
 	flagged_for_followup = db.Column(db.Boolean, nullable=False, default=False)
-	submitted_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+	submitted_at = db.Column(
+		db.DateTime,
+		nullable=False,
+		default=lambda: datetime.now(timezone.utc),
+	)
 
 	vehicle = db.relationship("Vehicle", back_populates="remittances")
 
@@ -24,7 +27,6 @@ class Remittance(db.Model):
 		return {
 			"id": self.id,
 			"vehicle_id": self.vehicle_id,
-			"driver_id": self.driver_id,
 			"expected_amount": float(self.expected_amount),
 			"actual_amount": float(self.actual_amount),
 			"status": self.status,

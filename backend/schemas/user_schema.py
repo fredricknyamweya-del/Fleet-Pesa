@@ -8,6 +8,12 @@ KENYAN_PHONE_REGEX = r"^(?:0[17]\d{8}|\+254[17]\d{8}|254[17]\d{8})$"
 class UserSchema(Schema):
     id = fields.Integer(dump_only=True)
 
+    account_name = fields.String(
+        required=False,
+        load_only=True,
+        validate=validate.Length(min=1, max=150),
+    )
+
     fleet_owner_id = fields.Integer(
         allow_none=True,
         load_default=None,
@@ -39,12 +45,7 @@ class UserSchema(Schema):
 
     role = fields.String(
         load_default="driver",
-        validate=validate.OneOf(["admin", "driver", "owner"]),
-    )
-
-    notification_preference = fields.String(
-        load_default="none",
-        validate=validate.OneOf(["none", "sms", "email"]),
+        validate=validate.OneOf(["admin", "driver"]),
     )
 
     created_at = fields.DateTime(dump_only=True)

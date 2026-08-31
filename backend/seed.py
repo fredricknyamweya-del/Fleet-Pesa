@@ -51,7 +51,7 @@ def seed():
             username="owner_moses",
             name="Moses Kiptoo",
             phone="+254712345001",
-            password_hash="pbkdf2:sha256:fakehash-moses",
+            password_hash="",
             role="admin",
         )
         admin_grace = User(
@@ -59,7 +59,7 @@ def seed():
             username="owner_grace",
             name="Grace Wanjiru",
             phone="+254712345002",
-            password_hash="pbkdf2:sha256:fakehash-grace",
+            password_hash="",
             role="admin",
         )
         admin_peter = User(
@@ -67,33 +67,42 @@ def seed():
             username="owner_peter",
             name="Peter Mwangi",
             phone="+254712345006",
-            password_hash="pbkdf2:sha256:fakehash-peter",
+            password_hash="",
             role="admin",
         )
         driver_james = User(
             username="driver_james",
             name="James Otieno",
             phone="+254712345003",
-            password_hash="pbkdf2:sha256:fakehash-james",
+            password_hash="",
             role="driver",
         )
         driver_alex = User(
             username="driver_alex",
             name="Alex Kimutai",
             phone="+254712345004",
-            password_hash="pbkdf2:sha256:fakehash-alex",
+            password_hash="",
             role="driver",
         )
         driver_lucy = User(
             username="driver_lucy",
             name="Lucy Nafula",
             phone="+254712345005",
-            password_hash="pbkdf2:sha256:fakehash-lucy",
+            password_hash="",
             role="driver",
         )
         db.session.add_all(
             [admin_moses, admin_grace, admin_peter, driver_james, driver_alex, driver_lucy]
         )
+        for user in [
+            admin_moses,
+            admin_grace,
+            admin_peter,
+            driver_james,
+            driver_alex,
+            driver_lucy,
+        ]:
+            user.set_password("fleetpesa123")
         db.session.commit()
 
         # ------------------------------------------------------------------

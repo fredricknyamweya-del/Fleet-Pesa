@@ -13,6 +13,7 @@ import { NotificationProvider } from "./context/NotificationContext.jsx";
 import LoginPage from "./pages/LoginPage.jsx";
 import SignupPage from "./pages/SignupPage.jsx";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage.jsx";
+import LandingPage from "./pages/LandingPage.jsx";
 
 import { AppShell } from "./components/layout/AppShell.jsx";
 
@@ -25,6 +26,7 @@ import RemittanceTransactionsPage from "./pages/owner/RemittanceTransactionsPage
 
 import RemmitancePage from "./pages/driver/RemittancePage.jsx";
 import DriverRemittanceHistoryPage from "./pages/driver/RemittanceHistoryPage.jsx";
+import DriverSettingsPage from "./pages/driver/SettingsPage.jsx";
 
 import RemittanceHistoryPage from "./pages/RemittanceHistoryPage.jsx";
 
@@ -165,6 +167,8 @@ export default function App() {
             <NotificationProvider>
               <Routes>
 
+                <Route path="/" element={<LandingPage />} />
+
                 {/* PUBLIC ROUTES */}
 
                 <Route
@@ -252,6 +256,26 @@ export default function App() {
                   element={
                     <ProtectedRoute>
                       <DriverNotificationsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* DRIVER SETTINGS */}
+
+                <Route
+                  path="/driver/settings"
+                  element={
+                    <ProtectedRoute>
+                      <DriverSettingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/driver/remittance/settings"
+                  element={
+                    <ProtectedRoute>
+                      <DriverSettingsPage />
                     </ProtectedRoute>
                   }
                 />

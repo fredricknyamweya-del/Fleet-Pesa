@@ -1,4 +1,3 @@
-
 import enum
 import re
 
@@ -12,7 +11,6 @@ from extensions import db, bcrypt
 class UserRole(enum.Enum):
     ADMIN = "admin"
     DRIVER = "driver"
-    OWNER = "owner"
 
 
 class User(db.Model):
@@ -35,6 +33,7 @@ class User(db.Model):
         db.String(80),
         unique=True,
         nullable=False,
+        index=True,
     )
 
     name = db.Column(
@@ -57,7 +56,21 @@ class User(db.Model):
         db.String(10),
         nullable=False,
         default=UserRole.DRIVER.value,
+        server_default=UserRole.DRIVER.value,
+    )
 
+    is_active = db.Column(
+        db.Boolean,
+        nullable=False,
+        default=True,
+        server_default="1",
+    )
+
+    notification_preference = db.Column(
+        db.String(10),
+        nullable=False,
+        default="none",
+        server_default="none",
     )
 
     created_at = db.Column(
@@ -67,25 +80,18 @@ class User(db.Model):
         server_default=db.func.now(),
     )
 
-    notification_preference = db.Column(
-        db.String(5),
-        nullable=False,
-        default="none",
-        server_default="none",
-    )
 
     fleet_owner = db.relationship(
         "FleetOwner",
         back_populates="users",
     )
 
-    # --------------------------------------------------
-    # Password
-    # --------------------------------------------------
+    driver_assignments = db.relationship(
+        "DriverAssignment",
+        back_populates="driver",
+    )
 
     def set_password(self, password):
-        """Hash and store a user's password."""
-
         if not password:
             raise ValueError("Password is required.")
 
@@ -99,9 +105,7 @@ class User(db.Model):
         ).decode("utf-8")
 
     def check_password(self, password):
-        """Check a plain-text password against the stored hash."""
-
-        if not password:
+        if not password or not self.password_hash:
             return False
 
         return bcrypt.check_password_hash(
@@ -109,90 +113,73 @@ class User(db.Model):
             password,
         )
 
-    # --------------------------------------------------
-    # Username
-    # --------------------------------------------------
-
     @validates("username")
     def validate_username(self, key, value):
         if value is None:
             raise ValueError("Username is required.")
 
-        value = value.strip()
+        value = str(value).strip().lower()
 
         if not value:
             raise ValueError("Username is required.")
 
-        return value
+        if len(value) < 3:
+            raise ValueError(
+                "Username must be at least 3 characters long."
+            )
 
-    # --------------------------------------------------
-    # Name
-    # --------------------------------------------------
+        if len(value) > 80:
+            raise ValueError(
+                "Username must not exceed 80 characters."
+            )
+
+        return value
 
     @validates("name")
     def validate_name(self, key, value):
         if value is None:
             raise ValueError("Name is required.")
 
-        value = value.strip()
+        value = str(value).strip()
 
         if not value:
             raise ValueError("Name is required.")
 
-        return value
-
-    # --------------------------------------------------
-    # Phone
-    # --------------------------------------------------
-
-    @validates("phone")
-    def validate_phone(self, key, value):
-        """
-        Normalize Kenyan phone numbers to +254XXXXXXXXX.
-
- R       Accepted examples:
-            0712345678
-            0112345678
-            254712345678
-            +254712345678
-
-        Stored as:
-            +254712345678
-        """
-
-        if value is None:
-            raise ValueError("Phone number is required.")
-
-        value = value.strip()
-
-        if not value:
-            raise ValueError("Phone number is required.")
-
-        # Remove common formatting characters.
-        value = re.sub(r"[\s\-()]", "", value)
-
-        # Convert 07XXXXXXXX / 01XXXXXXXX
-        # to +2547XXXXXXXX / +2541XXXXXXXX
-        if value.startswith(("07", "01")):
-            value = "+254" + value[1:]
-
-        # Convert 2547XXXXXXXX / 2541XXXXXXXX
-        # to +2547XXXXXXXX / +2541XXXXXXXX
-        elif value.startswith("254"):
-            value = "+" + value
-
-        # Validate final canonical format.
-        if not re.fullmatch(r"\+254[17]\d{8}", value):
+        if len(value) > 120:
             raise ValueError(
-                "Invalid Kenyan phone number. "
-                "Use a valid number such as +254712345678."
+                "Name must not exceed 120 characters."
             )
 
         return value
 
-    # --------------------------------------------------
-    # Serialization
-    # --------------------------------------------------
+    @validates("phone")
+    def validate_phone(self, key, value):
+        if value is None:
+            raise ValueError("Phone number is required.")
+
+        value = str(value).strip()
+
+        if not value:
+            raise ValueError("Phone number is required.")
+
+
+        value = re.sub(r"[\s\-()]", "", value)
+
+
+        if re.fullmatch(r"\+254[17]\d{8}", value):
+            value = "0" + value[4:]
+        elif re.fullmatch(r"254[17]\d{8}", value):
+            value = "0" + value[3:]
+        elif not (
+            re.fullmatch(r"07\d{8}", value)
+            or re.fullmatch(r"011\d{8}", value)
+        ):
+            raise ValueError(
+                "Phone number must start with 07 or 011."
+            )
+
+
+        return value
 
     def to_dict(self):
         return {
@@ -202,12 +189,14 @@ class User(db.Model):
             "phone": self.phone,
             "role": self.role,
             "fleet_owner_id": self.fleet_owner_id,
+            "is_active": self.is_active,
             "notification_preference": self.notification_preference,
             "created_at": (
                 self.created_at.isoformat()
                 if self.created_at
                 else None
-            ),
+            )
+
         }
 
     def __repr__(self):

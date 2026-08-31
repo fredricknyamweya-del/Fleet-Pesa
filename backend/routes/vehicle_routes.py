@@ -1,109 +1,149 @@
-from flask import Blueprint, jsonify, request
+from flask import request
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from marshmallow import ValidationError
 from flask_restful import Resource
+from marshmallow import ValidationError
 
 from extensions import db
+from models.driver_assignment import DriverAssignment
 from models.user import User
 from models.vehicle import Vehicle
-from schemas.vehicle_schema import vehicle_create_schema, vehicle_schema, vehicle_update_schema, vehicles_schema
+from schemas.vehicle_schema import (
+	vehicle_create_schema,
+	vehicle_schema,
+	vehicle_update_schema,
+	vehicles_schema,
+)
 
-vehicle_bp = Blueprint("vehicles", __name__, url_prefix="/api/vehicles")
+from utils.access_control import _can_access_vehicle
 
 
+def _current_user():
+	return db.session.get(User, int(get_jwt_identity()))
 
 
+class VehicleList(Resource):
+	@jwt_required()
+	def get(self):
+		user = _current_user()
+		if user is None:
+			return {"message": "User not found"}, 404
+		if user.role == "admin":
+			vehicles = Vehicle.query.filter_by(
+				fleet_owner_id=user.fleet_owner_id,
+				is_active=True,
+			).order_by(Vehicle.id).all()
+		else:
+			vehicles = (
+				Vehicle.query
+				.join(DriverAssignment)
+				.filter(
+					DriverAssignment.driver_id == user.id,
+					DriverAssignment.unassigned_at.is_(None),
+					Vehicle.is_active.is_(True),
+				)
+				.order_by(Vehicle.id)
+				.all()
+			)
+		return {"vehicles": vehicles_schema.dump(vehicles)}, 200
 
-class VehicleResource(Resource):
+	@jwt_required()
+	def post(self):
+		user = _current_user()
+		if user is None:
+			return {"message": "User not found"}, 404
+		if user.role != "admin":
+			return {"message": "Only owners can add vehicles"}, 403
 
-    @jwt_required()
-    def get(self, vehicle_id):
-        user_id = int(get_jwt_identity())
+		try:
+			data = vehicle_create_schema.load(
+				request.get_json(silent=True) or {}
+			)
+		except ValidationError as error:
+			return {
+				"message": "Invalid vehicle data",
+				"errors": error.messages,
+			}, 400
 
-        vehicle = db.session.get(Vehicle, vehicle_id)
+		data["plate_number"] = data["plate_number"].strip().upper()
+		if Vehicle.query.filter_by(
+			plate_number=data["plate_number"]
+		).first():
+			return {"message": "plate_number is already registered"}, 409
 
-        if vehicle is None:
-            return {"message": "Vehicle not found"}, 404
+		vehicle = Vehicle(
+			plate_number=data["plate_number"],
+			vehicle_type=data["vehicle_type"],
+			fleet_owner_id=user.fleet_owner_id,
+			daily_expected_amount=data["daily_expected_amount"],
+			is_active=True,
+		)
+		db.session.add(vehicle)
+		db.session.commit()
+		return {"vehicle": vehicle_schema.dump(vehicle)}, 201
 
-        if vehicle.owner_id != user_id and vehicle.driver_id != user_id:
-            return {"message": "You do not have access to this vehicle"}, 403
 
-        return {
-            "vehicle": vehicle_schema.dump(vehicle)
-        }, 200
+class VehicleDetail(Resource):
+	@jwt_required()
+	def get(self, vehicle_id):
+		vehicle = db.session.get(Vehicle, vehicle_id)
+		if vehicle is None:
+			return {"message": "Vehicle not found"}, 404
+		if not _can_access_vehicle(_current_user(), vehicle):
+			return {"message": "You do not have access to this vehicle"}, 403
+		return {"vehicle": vehicle_schema.dump(vehicle)}, 200
 
-    @jwt_required()
-    def patch(self, vehicle_id):
-        user_id = int(get_jwt_identity())
+	@jwt_required()
+	def patch(self, vehicle_id):
+		user = _current_user()
+		if user is None:
+			return {"message": "User not found"}, 404
+		vehicle = db.session.get(Vehicle, vehicle_id)
+		if vehicle is None:
+			return {"message": "Vehicle not found"}, 404
+		if vehicle.fleet_owner_id != user.fleet_owner_id or user.role != "admin":
+			return {
+				"message": "Only the owning fleet owner can update this vehicle"
+			}, 403
 
-        vehicle = db.session.get(Vehicle, vehicle_id)
+		try:
+			data = vehicle_update_schema.load(
+				request.get_json(silent=True) or {}
+			)
+		except ValidationError as error:
+			return {
+				"message": "Invalid vehicle data",
+				"errors": error.messages,
+			}, 400
+		if not data:
+			return {"message": "At least one vehicle field is required"}, 400
 
-        if vehicle is None:
-            return {"message": "Vehicle not found"}, 404
+		if "plate_number" in data:
+			data["plate_number"] = data["plate_number"].strip().upper()
+			existing = Vehicle.query.filter(
+				Vehicle.plate_number == data["plate_number"],
+				Vehicle.id != vehicle_id,
+			).first()
+			if existing:
+				return {"message": "plate_number is already registered"}, 409
 
-        if vehicle.owner_id != user_id:
-            return {
-                "message": "Only the owning fleet owner can update this vehicle"
-            }, 403
+		for field, value in data.items():
+			setattr(vehicle, field, value)
+		db.session.commit()
+		return {"vehicle": vehicle_schema.dump(vehicle)}, 200
 
-        try:
-            data = vehicle_update_schema.load(
-                request.get_json(silent=True) or {}
-            )
-        except ValidationError as error:
-            return {
-                "message": "Invalid vehicle data",
-                "errors": error.messages
-            }, 400
+	@jwt_required()
+	def delete(self, vehicle_id):
+		user = _current_user()
+		if user is None:
+			return {"message": "User not found"}, 404
+		vehicle = db.session.get(Vehicle, vehicle_id)
+		if vehicle is None:
+			return {"message": "Vehicle not found"}, 404
+		if vehicle.fleet_owner_id != user.fleet_owner_id or user.role != "admin":
+			return {
+				"message": "Only the owning fleet owner can remove this vehicle"
+			}, 403
 
-        if not data:
-            return {
-                "message": "At least one vehicle field is required"
-            }, 400
-
-        if "plate_number" in data:
-            existing = Vehicle.query.filter(
-                Vehicle.plate_number == data["plate_number"],
-                Vehicle.id != vehicle_id
-            ).first()
-
-            if existing:
-                return {
-                    "message": "plate_number is already registered"
-                }, 409
-
-        if "driver_id" in data and data["driver_id"] is not None:
-            driver = db.session.get(User, data["driver_id"])
-
-            if driver is None or driver.role != "driver":
-                return {
-                    "message": "driver_id must reference an existing driver"
-                }, 400
-
-        for field, value in data.items():
-            setattr(vehicle, field, value)
-
-        db.session.commit()
-
-        return {
-            "vehicle": vehicle_schema.dump(vehicle)
-        }, 200
-
-    @jwt_required()
-    def delete(self, vehicle_id):
-        user_id = int(get_jwt_identity())
-
-        vehicle = db.session.get(Vehicle, vehicle_id)
-
-        if vehicle is None:
-            return {"message": "Vehicle not found"}, 404
-
-        if vehicle.owner_id != user_id:
-            return {
-                "message": "Only the owning fleet owner can remove this vehicle"
-            }, 403
-
-        db.session.delete(vehicle)
-        db.session.commit()
-
-        return "", 204
+		vehicle.is_active = False
+		db.session.commit()
+		return {"vehicle": vehicle_schema.dump(vehicle)}, 200

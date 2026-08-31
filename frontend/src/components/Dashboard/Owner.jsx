@@ -1,5 +1,6 @@
 import { useState } from "react";
 import {
+  BusFront,
   Clock3,
   TrendingUp,
   Users,
@@ -100,6 +101,13 @@ const summaryCards = [
     trend: "1 offline today",
     tone: "info",
     icon: Users,
+  },
+  {
+    label: "Vehicles Tracked",
+    value: "8 / 10",
+    trend: "2 parked today",
+    tone: "fleet",
+    icon: BusFront,
   },
 ];
 

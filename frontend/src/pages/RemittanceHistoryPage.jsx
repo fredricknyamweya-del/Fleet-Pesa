@@ -12,6 +12,7 @@ export default function RemittanceHistoryPage() {
   const navigate = useNavigate();
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicleId || "");
   const [filters, setFilters] = useState({ from: "", to: "", status: "all" });
+  const [statusOpen, setStatusOpen] = useState(false);
   const history = useRemittanceHistory(vehicleId, filters);
   const mockVehicle = MOCK_VEHICLES.find((vehicle) => vehicle.id === selectedVehicleId);
   const vehicle = (mockVehicle && { plate_number: mockVehicle.plate_number, vehicle_type: mockVehicle.type }) || history.vehicle;
@@ -40,7 +41,23 @@ export default function RemittanceHistoryPage() {
       <section className="history-filter-bar" aria-label="Remittance filters">
         <label className="history-date-field">From<input type="date" value={filters.from} onChange={(event) => updateFilter("from", event.target.value)} aria-label="Start date" /></label>
         <label className="history-date-field">To<input type="date" value={filters.to} onChange={(event) => updateFilter("to", event.target.value)} aria-label="End date" /></label>
-        <label className="text-xs font-bold uppercase tracking-wide text-slate-500">Status<select value={filters.status} onChange={(event) => updateFilter("status", event.target.value)} className="mt-1 block rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900"><option value="all">All</option><option value="paid">Paid</option><option value="short">Short</option></select></label>
+        <div className="history-status-field">
+          <span>Status</span>
+          <div className="history-status-control">
+            <button type="button" className={`history-status-select${statusOpen || filters.status !== "all" ? " active" : ""}`} aria-haspopup="listbox" aria-expanded={statusOpen} onClick={() => setStatusOpen((open) => !open)}>
+              {filters.status === "paid" ? "Paid" : filters.status === "short" ? "Shortfall" : "All statuses"}
+            </button>
+            {statusOpen && (
+              <div className="history-status-menu" role="listbox" aria-label="Remittance status">
+                {[{ value: "all", label: "All statuses" }, { value: "paid", label: "Paid" }, { value: "short", label: "Shortfall" }].map((option) => (
+                  <button key={option.value} type="button" role="option" aria-selected={filters.status === option.value} className="history-status-option" onClick={() => { updateFilter("status", option.value); setStatusOpen(false); }}>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         {(filters.from || filters.to) && <button type="button" className="history-clear-dates" onClick={clearDates}>Clear dates</button>}
         <label className="history-vehicle-picker">Vehicle<select value={selectedVehicleId} onChange={(event) => { setSelectedVehicleId(event.target.value); navigate(`/vehicles/${event.target.value}/remittances`); }}><option value="">Choose a vehicle</option>{MOCK_VEHICLES.map((item) => <option key={item.id} value={item.id}>{item.plate_number} · {item.driver_name}</option>)}</select></label>
       </section>

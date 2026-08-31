@@ -1,4 +1,4 @@
-export default function Avatar({ name = "Driver", size = "md", className = "" }) {
+export default function Avatar({ name = "Driver", image = "", size = "md", className = "" }) {
   const initials = name
     .split(" ")
     .filter(Boolean)
@@ -18,7 +18,7 @@ export default function Avatar({ name = "Driver", size = "md", className = "" })
       aria-label={name}
       title={name}
     >
-      {initials}
+      {image ? <img className="h-full w-full rounded-full object-cover" src={image} alt="" /> : initials}
     </div>
   );
 }
