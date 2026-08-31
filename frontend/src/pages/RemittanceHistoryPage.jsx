@@ -21,6 +21,7 @@ export default function RemittanceHistoryPage() {
 
   const updateFilter = (key, value) => {
     setFilters((current) => ({ ...current, [key]: value }));
+    setPage(1);
   };
 
   const clearDates = () => {
