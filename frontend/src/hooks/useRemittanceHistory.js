@@ -4,9 +4,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { MOCK_VEHICLES } from "../data/mockVehicles.js";
 import { MOCK_REMITTANCES } from "../data/mockRemittances.js";
 
-export default function useRemittanceHistory(vehicleId, filters) {
+export default function useRemittanceHistory(vehicleId, filters, page = 1, perPage = 10) {
   const { token } = useAuth();
-  const [state, setState] = useState({ loading: true, error: "", vehicle: null, remittances: [] });
+  const [state, setState] = useState({ loading: true, error: "", vehicle: null, remittances: [], pagination: null });
 
   useEffect(() => {
     let cancelled = false;
