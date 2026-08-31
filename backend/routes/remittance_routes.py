@@ -163,6 +163,12 @@ class VehicleRemittanceHistory(Resource):
                 item for item in records
                 if _can_read_transaction(user, vehicle, item.submitted_at)
             ]
+
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 20, type=int)
+        page = max(1, page)
+        per_page = max(1, min(per_page, 100))
+
         return {
             "vehicle": {
                 "id": vehicle.id,
