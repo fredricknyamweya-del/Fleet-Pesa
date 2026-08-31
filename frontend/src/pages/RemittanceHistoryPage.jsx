@@ -66,6 +66,14 @@ export default function RemittanceHistoryPage() {
       </section>
 
       {history.loading ? <div className="flex items-center justify-center gap-2 py-16 text-sm text-slate-500"><Loader2 className="animate-spin" size={18} /> Loading remittances...</div> : history.error ? <p className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm font-semibold text-red-700" role="alert">{history.error}</p> : history.remittances.length === 0 ? <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-12 text-center"><History className="mx-auto text-slate-400" size={30} /><p className="mt-3 text-sm font-semibold text-slate-700">No remittances recorded yet for this vehicle</p></div> : <div className="history-table-wrap"><table className="history-table"><thead><tr><th>Date submitted</th><th>Expected</th><th>Actual</th><th>Status</th><th>Payment</th></tr></thead><tbody>{history.remittances.map((item) => <tr key={item.id}><td className="history-date">{dateLabel(item.submitted_at)}</td><td>{currency(item.expected_amount)}</td><td>{currency(item.actual_amount)}</td><td><span className={`history-status ${item.status === "paid" ? "paid" : "short"}`}>{item.status}</span></td><td><span className="history-payment">{item.payment_status}</span></td></tr>)}</tbody></table></div>}
+
+      {history.pagination && (
+        <Pagination
+          page={history.pagination.page}
+          pageCount={history.pagination.total_pages}
+          onPageChange={setPage}
+        />
+      )}
     </div>
   );
 }
