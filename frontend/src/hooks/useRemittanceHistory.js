@@ -28,7 +28,7 @@ export default function useRemittanceHistory(vehicleId, filters, page = 1, perPa
             pagination: { page, per_page: perPage, total, total_pages: total ? Math.ceil(total / perPage) : 0 },
           });
         }, 250))
-      : getVehicleRemittanceHistory(vehicleId, filters);
+      : getVehicleRemittanceHistory(vehicleId, { ...filters, page, per_page: perPage });
     request
       .then((data) => { if (!cancelled) setState({ loading: false, error: "", vehicle: data.vehicle, remittances: data.remittances || [] }); })
       .catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, vehicle: null, remittances: [] }); });
