@@ -276,11 +276,13 @@ export async function updatePassword(passwordData) {
 // ============================================================
 
 export async function getVehicleRemittanceHistory(
-  vehicleId
+  vehicleId,
+  { status, from, to, page, per_page } = {}
 ) {
   try {
     const response = await api.get(
-      `/vehicles/${vehicleId}/remittances`
+      `/vehicles/${vehicleId}/remittances`,
+      { params: { status, from, to, page, per_page } }
     );
 
     return response.data;
