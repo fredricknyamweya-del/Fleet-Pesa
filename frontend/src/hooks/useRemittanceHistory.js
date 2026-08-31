@@ -30,10 +30,10 @@ export default function useRemittanceHistory(vehicleId, filters, page = 1, perPa
         }, 250))
       : getVehicleRemittanceHistory(vehicleId, { ...filters, page, per_page: perPage });
     request
-      .then((data) => { if (!cancelled) setState({ loading: false, error: "", vehicle: data.vehicle, remittances: data.remittances || [] }); })
-      .catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, vehicle: null, remittances: [] }); });
+      .then((data) => { if (!cancelled) setState({ loading: false, error: "", vehicle: data.vehicle, remittances: data.remittances || [], pagination: data.pagination || null }); })
+      .catch((error) => { if (!cancelled) setState({ loading: false, error: error.message, vehicle: null, remittances: [], pagination: null }); });
     return () => { cancelled = true; };
-  }, [token, vehicleId, filters]);
+  }, [token, vehicleId, filters, page, perPage]);
 
   return state;
 }
