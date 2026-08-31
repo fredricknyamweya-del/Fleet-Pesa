@@ -180,6 +180,12 @@ class VehicleRemittanceHistory(Resource):
                 "vehicle_type": vehicle.vehicle_type,
             },
             "remittances": remittances_schema.dump(page_items),
+            "pagination": {
+                "page": page,
+                "per_page": per_page,
+                "total": total,
+                "total_pages": (total + per_page - 1) // per_page if total else 0,
+            },
         }, 200
 
 
