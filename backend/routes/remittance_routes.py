@@ -52,6 +52,9 @@ class RemittanceList(Resource):
             query = query.filter_by(status=status)
         visible = _visible_remittances(user, query)
 
+        page = request.args.get("page", 1, type=int)
+        per_page = request.args.get("per_page", 20, type=int)
+
         return {"remittances": remittances_schema.dump(visible)}, 200
 
     @jwt_required()
