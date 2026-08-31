@@ -14,7 +14,8 @@ export default function RemittanceHistoryPage() {
   const [selectedVehicleId, setSelectedVehicleId] = useState(vehicleId || "");
   const [filters, setFilters] = useState({ from: "", to: "", status: "all" });
   const [statusOpen, setStatusOpen] = useState(false);
-  const history = useRemittanceHistory(vehicleId, filters);
+  const [page, setPage] = useState(1);
+  const history = useRemittanceHistory(vehicleId, filters, page, 10);
   const mockVehicle = MOCK_VEHICLES.find((vehicle) => vehicle.id === selectedVehicleId);
   const vehicle = (mockVehicle && { plate_number: mockVehicle.plate_number, vehicle_type: mockVehicle.type }) || history.vehicle;
 
