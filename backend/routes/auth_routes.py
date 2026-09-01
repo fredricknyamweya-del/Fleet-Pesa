@@ -5,6 +5,7 @@ from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models.user import User
+from models.fleet_owner import FleetOwner
 from schemas.user_schema import user_schema
 
 
@@ -49,14 +50,20 @@ class SignupResource(Resource):
             if existing_phone:
                 return {"error": "Phone number already exists."}, 409
 
-            
+            # Create FleetOwner if this is an owner signup
+            fleet_owner = None
+            if role == "owner":
+                fleet_owner = FleetOwner(account_name=name)
+                db.session.add(fleet_owner)
+                db.session.flush()  # Get the auto-generated ID
+
             # Create user
-            
             user = User(
                 username=username,
                 name=name,
                 phone=phone,
-                role=role
+                role=role,
+                fleet_owner_id=fleet_owner.id if fleet_owner else None
             )
 
             # Never store plain-text passwords
@@ -146,6 +153,7 @@ class LoginResource(Resource):
         # -------------------------------------------------------------
         return {
             "message": "Login successful.",
+            "access_token": access_token,
             "user": user.to_dict(),
         }, 200
 
