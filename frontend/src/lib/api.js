@@ -298,6 +298,28 @@ export async function getVehicleRemittanceHistory(
 
 
 // ============================================================
+// REMITTANCES LIST
+// ============================================================
+
+export async function getRemittances({ status, vehicle_id, driver_id, from, to, page, per_page } = {}) {
+  try {
+    const response = await api.get("/remittances", {
+      params: { status, vehicle_id, driver_id, from, to, page, per_page },
+    });
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      "Unable to load remittances.";
+
+    throw new Error(message);
+  }
+}
+
+
+// ============================================================
 // UPDATE REMITTANCE
 // ============================================================
 
