@@ -512,31 +512,16 @@ export function listOwnerRemittanceHistory(
   );
 }
 
-/**
- * Existing frontend-only mock.
- *
- * Keep this until the backend exposes the endpoint.
- */
 export function updateRemittance(
   remittanceId,
   updates = {},
 ) {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      resolve({
-        id: remittanceId,
-        ...updates,
-        updated_at: new Date().toISOString(),
-        status: "resolved",
-      });
-    }, 400);
-  });
+  throw new Error("updateRemittance: not yet implemented");
 }
 
 /* =========================================================
    CUSTOMER M-PESA PAYMENTS
 ========================================================= */
-
 /**
  * Send an M-Pesa STK Push to a customer.
  *
