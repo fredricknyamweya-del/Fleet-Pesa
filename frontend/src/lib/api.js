@@ -516,7 +516,13 @@ export function updateRemittance(
   remittanceId,
   updates = {},
 ) {
-  throw new Error("updateRemittance: not yet implemented");
+  return request(
+    `/remittances/${encodeURIComponent(remittanceId)}`,
+    {
+      method: "PATCH",
+      body: updates,
+    },
+  );
 }
 
 /* =========================================================
