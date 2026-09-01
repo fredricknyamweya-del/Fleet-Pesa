@@ -96,7 +96,7 @@ export default function useDashboardSummary() {
     let cancelled = false;
     setState((current) => ({ ...current, loading: true, error: "" }));
 
-    const isMock = token?.startsWith("mock-token");
+    const isMock = token?.startsWith("mock-");
 
     const request = isMock
       ? new Promise((resolve) =>
