@@ -1,13 +1,36 @@
 import { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getRemittances } from "../lib/api.js";
+import { getRemittances, getVehicles } from "../lib/api.js";
 import { MOCK_REMITTANCES } from "../data/mockRemittances.js";
 import { MOCK_VEHICLES } from "../data/mockVehicles.js";
+
+const DAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 function startOfDay(date) {
   const copy = new Date(date);
   copy.setHours(0, 0, 0, 0);
   return copy;
+}
+
+function buildWeeklyRevenue(remittances) {
+  const today = startOfDay(new Date());
+  const days = [];
+
+  for (let i = 6; i >= 0; i -= 1) {
+    const day = new Date(today);
+    day.setDate(day.getDate() - i);
+    days.push({ date: day, day: DAY_LABELS[day.getDay()], revenue: 0 });
+  }
+
+  remittances.forEach((item) => {
+    const submitted = startOfDay(new Date(item.submitted_at));
+    const match = days.find((d) => d.date.getTime() === submitted.getTime());
+    if (match) {
+      match.revenue += Number(item.actual_amount || 0);
+    }
+  });
+
+  return days.map(({ day, revenue }) => ({ day, revenue }));
 }
 
 function buildSummary(remittances, vehicleLookup) {
@@ -31,17 +54,15 @@ function buildSummary(remittances, vehicleLookup) {
       0
     );
 
-  const shortfallCount = remittances.filter(
-    (item) => item.status === "short" && item.flagged_for_followup !== false
-  ).length;
+  const shortfallItems = remittances.filter((item) => item.status === "short");
+  const shortfallCount = shortfallItems.length;
 
   const vehicleIds = new Set(remittances.map((item) => item.vehicle_id));
   const driverIds = new Set(
     remittances.map((item) => item.driver_id).filter((id) => id != null)
   );
 
-  const shortfallList = remittances
-    .filter((item) => item.status === "short")
+  const shortfallList = shortfallItems
     .sort((a, b) => new Date(b.submitted_at) - new Date(a.submitted_at))
     .map((item) => {
       const vehicle = vehicleLookup.get(item.vehicle_id);
@@ -63,6 +84,7 @@ function buildSummary(remittances, vehicleLookup) {
     vehicleCount: vehicleIds.size,
     driverCount: driverIds.size,
     shortfallList,
+    weeklyRevenue: buildWeeklyRevenue(remittances),
   };
 }
 
@@ -79,15 +101,18 @@ export default function useDashboardSummary() {
     const request = isMock
       ? new Promise((resolve) =>
           window.setTimeout(() => {
-            const vehicleLookup = new Map(
-              MOCK_VEHICLES.map((v) => [v.id, v])
-            );
+            const vehicleLookup = new Map(MOCK_VEHICLES.map((v) => [v.id, v]));
             resolve(buildSummary(MOCK_REMITTANCES, vehicleLookup));
           }, 250)
         )
-      : getRemittances({ per_page: 100 }).then((data) => {
-          const vehicleLookup = new Map();
-          return buildSummary(data.remittances || [], vehicleLookup);
+      : Promise.all([
+          getRemittances({ per_page: 100 }),
+          getVehicles({ per_page: 100 }),
+        ]).then(([remittanceData, vehicleData]) => {
+          const vehicleLookup = new Map(
+            (vehicleData.vehicles || []).map((v) => [v.id, v])
+          );
+          return buildSummary(remittanceData.remittances || [], vehicleLookup);
         });
 
     request
