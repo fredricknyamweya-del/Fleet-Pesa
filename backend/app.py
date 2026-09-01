@@ -3,6 +3,9 @@ from flask_cors import CORS
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from flask_restful import Api, Resource
 from marshmallow import ValidationError
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from config import Config
 from extensions import db, bcrypt, jwt, migrate

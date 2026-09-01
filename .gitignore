@@ -65,3 +65,7 @@ Thumbs.db
 # === Misc ===
 *.log
 .cache/
+
+# Backend environment
+backend/venv/
+backend/.env

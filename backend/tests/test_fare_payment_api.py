@@ -1,4 +1,17 @@
+from unittest.mock import patch
+
 from models.fare_payment import FarePayment
+
+
+MOCK_STK_RESPONSE = {
+    "MerchantRequestID": "29115-34620561-1",
+    "CheckoutRequestID": "ws_CO_TEST_123456789",
+    "ResponseCode": "0",
+    "ResponseDescription": "Success. Request accepted for processing",
+    "CustomerMessage": "Success. Request accepted for processing",
+}
+
+
 
 
 def login(client, username, password="fleetpesa123"):
@@ -13,7 +26,11 @@ def login(client, username, password="fleetpesa123"):
     return response.get_json()["access_token"]
 
 
-def test_owner_can_create_fare_payment(api_app):
+@patch(
+    "routes.fare_payment_routes.initiate_stk_push",
+    return_value=MOCK_STK_RESPONSE,
+)
+def test_owner_can_create_fare_payment(mock_stk, api_app):
     client = api_app.test_client()
 
     token = login(client, "owner_moses")
@@ -39,6 +56,13 @@ def test_owner_can_create_fare_payment(api_app):
     assert data["mpesa_reference"].startswith("FP-")
     assert len(data["mpesa_reference"]) == 27
     assert data["mpesa_transaction_code"] is None
+
+    mock_stk.assert_called_once()
+    call_kwargs = mock_stk.call_args.kwargs
+
+    assert call_kwargs["phone"] == "+254798765999"
+    assert call_kwargs["amount"] == 120
+    assert call_kwargs["account_reference"] == data["mpesa_reference"]
 
 
 def test_create_fare_payment_requires_authentication(api_app):
@@ -233,7 +257,11 @@ def test_mpesa_callback_rejects_invalid_payload(api_app):
     assert response.status_code == 400
 
 
-def test_created_payment_is_persisted(api_app):
+@patch(
+    "routes.fare_payment_routes.initiate_stk_push",
+    return_value=MOCK_STK_RESPONSE,
+)
+def test_created_payment_is_persisted(mock_stk, api_app):
     client = api_app.test_client()
 
     token = login(client, "owner_moses")
@@ -260,3 +288,65 @@ def test_created_payment_is_persisted(api_app):
     assert payment is not None
     assert payment.vehicle_id == 2
     assert payment.amount == 75.50
+
+
+@patch(
+    "routes.fare_payment_routes.initiate_stk_push",
+    return_value={
+        "ResponseCode": "1",
+        "ResponseDescription": "Request failed",
+    },
+)
+def test_fare_payment_marks_failed_when_mpesa_rejects(mock_stk, api_app):
+    client = api_app.test_client()
+
+    token = login(client, "owner_moses")
+
+    response = client.post(
+        "/api/fare-payments",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "vehicle_id": 1,
+            "customer_phone": "+254798765777",
+            "amount": 100,
+        },
+    )
+
+    assert response.status_code == 502
+
+    data = response.get_json()["fare_payment"]
+
+    assert data["payment_status"] == "failed"
+
+    mock_stk.assert_called_once()
+
+
+@patch(
+    "routes.fare_payment_routes.initiate_stk_push",
+    side_effect=RuntimeError("M-Pesa credentials are not configured"),
+)
+def test_fare_payment_marks_failed_when_mpesa_service_errors(
+    mock_stk,
+    api_app,
+):
+    client = api_app.test_client()
+
+    token = login(client, "owner_moses")
+
+    response = client.post(
+        "/api/fare-payments",
+        headers={"Authorization": f"Bearer {token}"},
+        json={
+            "vehicle_id": 1,
+            "customer_phone": "+254798765666",
+            "amount": 100,
+        },
+    )
+
+    assert response.status_code == 502
+
+    data = response.get_json()["fare_payment"]
+
+    assert data["payment_status"] == "failed"
+
+    mock_stk.assert_called_once()
