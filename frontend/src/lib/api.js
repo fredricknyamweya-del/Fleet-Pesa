@@ -298,6 +298,29 @@ export async function getVehicleRemittanceHistory(
 
 
 // ============================================================
+// UPDATE REMITTANCE
+// ============================================================
+
+export async function updateRemittance(remittanceId, data) {
+  try {
+    const response = await api.patch(
+      `/remittances/${remittanceId}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.message ||
+      error?.response?.data?.error ||
+      "Unable to update remittance.";
+
+    throw new Error(message);
+  }
+}
+
+
+// ============================================================
 // LOGOUT
 // ============================================================
 
