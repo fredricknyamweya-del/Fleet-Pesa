@@ -694,6 +694,7 @@ export default function Driver() {
 
       {showFarePaymentModal && (
         <FarePaymentModal
+          vehicleId={startedVehicle?.id}
           onClose={() =>
             setShowFarePaymentModal(false)
           }
