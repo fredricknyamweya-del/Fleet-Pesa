@@ -152,11 +152,12 @@ class Login(Resource):
             }, 400
 
         username = json_data.get("username")
+        phone = json_data.get("phone")
         password = json_data.get("password")
 
-        if username is None:
+        if username is None and phone is None:
             return {
-                "error": "Username is required."
+                "error": "Username or phone is required."
             }, 400
 
         if password is None:
@@ -164,18 +165,21 @@ class Login(Resource):
                 "error": "Password is required."
             }, 400
 
-        username = str(username).strip().lower()
+        if username is not None:
+            username = str(username).strip().lower()
 
-        if not username:
-            return {
-                "error": "Username is required."
-            }, 400
+        if phone is not None:
+            phone = str(phone).strip()
 
-        user = (
-            User.query
-            .filter_by(username=username)
-            .first()
-        )
+            # Convert 07XXXXXXXX to +2547XXXXXXXX
+            if phone.startswith("07") and len(phone) == 10:
+                phone = "+254" + phone[1:]
+
+        if username:
+            user = User.query.filter_by(username=username).first()
+        else:
+            user = User.query.filter_by(phone=phone).first()
+
 
         # Do not reveal whether the username exists.
         if user is None:

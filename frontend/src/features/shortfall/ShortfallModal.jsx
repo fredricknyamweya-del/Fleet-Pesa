@@ -51,8 +51,10 @@ export default function ShortfallModal({ remittance, onClose, onResolved }) {
     setStatus({ type: "idle", message: "" });
 
     try {
-      await api.updateRemittance(remittance.id, { flagged_for_followup: false, resolved: true });
-      setResolved(true);
+      await api.updateRemittance(remittance.id, {
+        resolved: true,
+        flagged_for_followup: false,
+      });
       if (typeof onResolved === "function") {
         onResolved();
       }

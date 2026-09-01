@@ -47,11 +47,52 @@ export function clearTokens() {
 // REQUEST INTERCEPTOR
 // ============================================================
 
+// ============================================================
+// AUTOMATIC TOKEN REFRESH
+// ============================================================
+
+let refreshPromise = null;
+
+async function refreshAccessTokenInternal() {
+  const refreshToken = getRefreshToken();
+
+  if (!refreshToken) {
+    throw new Error("No refresh token available.");
+  }
+
+  const response = await axios.post(
+    `${API_BASE_URL}/auth/refresh`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${refreshToken}`,
+        "Content-Type": "application/json",
+      },
+    }
+  );
+
+  const newAccessToken = response.data.access_token;
+
+  if (!newAccessToken) {
+    throw new Error("Refresh response did not contain an access token.");
+  }
+
+  localStorage.setItem(ACCESS_TOKEN_KEY, newAccessToken);
+
+  return newAccessToken;
+}
+
+
+// ============================================================
+// REQUEST INTERCEPTOR
+// ============================================================
+
 api.interceptors.request.use(
   (config) => {
     const token = getAccessToken();
 
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -62,64 +103,76 @@ api.interceptors.request.use(
 
 
 // ============================================================
-// MOCK AUTH FOR FRONTEND DEMO
+// RESPONSE INTERCEPTOR
 // ============================================================
 
-const PHONE_PATTERN = /^07\d{8}$/;
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
+api.interceptors.response.use(
+  (response) => response,
 
-function validateMockPhone(phone) {
-  const cleanPhone = (phone || "").replace(/\s+/g, "");
+  async (error) => {
+    const originalRequest = error.config;
 
-  if (!PHONE_PATTERN.test(cleanPhone)) {
-    throw new Error("Phone number must be 10 digits in the format 0701234567");
+    if (
+      error.response?.status !== 401 ||
+      originalRequest?._retry ||
+      originalRequest?.url?.includes("/auth/login") ||
+      originalRequest?.url?.includes("/auth/refresh")
+    ) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+
+    try {
+      if (!refreshPromise) {
+        refreshPromise = refreshAccessTokenInternal().finally(() => {
+          refreshPromise = null;
+        });
+      }
+
+      const newAccessToken = await refreshPromise;
+
+      originalRequest.headers = originalRequest.headers || {};
+      originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
+      return api(originalRequest);
+    } catch (refreshError) {
+      clearTokens();
+      return Promise.reject(refreshError);
+    }
   }
+);
 
-  return cleanPhone;
-}
 
-function validateMockPassword(password) {
-  if (!PASSWORD_PATTERN.test(String(password || ""))) {
-    throw new Error("Password must be at least 6 characters and include letters, numbers, and special characters.");
+// ============================================================
+// AUTH
+// ============================================================
+
+export async function login({ username, password }) {
+  try {
+    const response = await api.post("/auth/login", {
+      username,
+      password,
+    });
+
+    const data = response.data;
+
+    saveTokens(
+      data.access_token,
+      data.refresh_token
+    );
+
+    return data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to log in.";
+
+    throw new Error(message);
   }
-
-  return String(password);
 }
 
-function makeMockAuth({ role = "owner", phone = "", password = "", username = "", name = "" }) {
-  const safePhone = validateMockPhone(phone);
-  const safePassword = validateMockPassword(password);
-  const safeRole = role || "owner";
-  const mockToken = `mock-${safeRole}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-  const user = {
-    id: `mock-user-${Date.now()}`,
-    username: (username || safePhone || "demo-user").trim() || "demo-user",
-    name: (name || "Demo User").trim() || "Demo User",
-    phone: safePhone,
-    role: safeRole,
-    password: safePassword,
-  };
-
-  return {
-    token: mockToken,
-    access_token: mockToken,
-    refresh_token: mockToken,
-    user,
-    message: "Mock authentication successful.",
-  };
-}
-
-export async function login({ phone, password, role }) {
-  const cleanPhone = validateMockPhone(phone);
-  validateMockPassword(password);
-
-  const data = makeMockAuth({ phone: cleanPhone, password, role });
-
-  saveTokens(data.access_token, data.refresh_token);
-
-  return data;
-}
 
 export async function register({
   username,
@@ -127,21 +180,31 @@ export async function register({
   phone,
   password,
   role,
+  account_name,
+  fleet_owner_id,
+  notification_preference,
 }) {
-  const cleanPhone = validateMockPhone(phone);
-  validateMockPassword(password);
+  try {
+    const response = await api.post("/auth/signup", {
+      username,
+      name,
+      phone,
+      password,
+      role,
+      account_name,
+      fleet_owner_id,
+      notification_preference,
+    });
 
-  const data = makeMockAuth({
-    username,
-    name,
-    phone: cleanPhone,
-    password,
-    role,
-  });
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to create account.";
 
-  saveTokens(data.access_token, data.refresh_token);
-
-  return data;
+    throw new Error(message);
+  }
 }
 
 
@@ -211,18 +274,13 @@ export async function refreshAccessToken() {
 
 
 // ============================================================
-// UPDATE PROFILE
-// ============================================================
-//
-// IMPORTANT:
-// Change "/profile" below if your Flask backend uses a
-// different profile endpoint.
+// PROFILE
 // ============================================================
 
 export async function updateProfile(profileData) {
   try {
-    const response = await api.put(
-      "/profile",
+    const response = await api.patch(
+      "/users/me",
       profileData
     );
 
@@ -238,19 +296,10 @@ export async function updateProfile(profileData) {
 }
 
 
-// ============================================================
-// UPDATE PASSWORD
-// ============================================================
-//
-// IMPORTANT:
-// Change "/profile/password" below if your Flask backend
-// uses a different password endpoint.
-// ============================================================
-
 export async function updatePassword(passwordData) {
   try {
-    const response = await api.put(
-      "/profile/password",
+    const response = await api.patch(
+      "/users/me/password",
       passwordData
     );
 
@@ -267,20 +316,221 @@ export async function updatePassword(passwordData) {
 
 
 // ============================================================
-// VEHICLE REMITTANCE HISTORY
-// ============================================================
-//
-// IMPORTANT:
-// Change this endpoint if your Flask backend uses a
-// different URL.
+// VEHICLES
 // ============================================================
 
-export async function getVehicleRemittanceHistory(
+export async function listVehicles() {
+  try {
+    const response = await api.get("/vehicles");
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load vehicles.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function getVehicle(vehicleId) {
+  try {
+    const response = await api.get(
+      `/vehicles/${vehicleId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load vehicle.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function createVehicle(vehicleData) {
+  try {
+    const response = await api.post(
+      "/vehicles",
+      vehicleData
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to create vehicle.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function updateVehicle(
+  vehicleId,
+  vehicleData
+) {
+  try {
+    const response = await api.patch(
+      `/vehicles/${vehicleId}`,
+      vehicleData
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to update vehicle.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function deleteVehicle(vehicleId) {
+  try {
+    const response = await api.delete(
+      `/vehicles/${vehicleId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to remove vehicle.";
+
+    throw new Error(message);
+  }
+}
+
+
+// ============================================================
+// DRIVER ASSIGNMENTS
+// ============================================================
+
+export async function listDriverAssignments() {
+  try {
+    const response = await api.get(
+      "/driver-assignments"
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load driver assignments.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function assignDriver(
+  vehicleId,
+  driverId
+) {
+  try {
+    const response = await api.post(
+      `/vehicles/${vehicleId}/assign-driver`,
+      {
+        driver_id: driverId,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to assign driver.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function unassignDriver(
+  assignmentId
+) {
+  try {
+    const response = await api.patch(
+      `/driver-assignments/${assignmentId}/unassign`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to unassign driver.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function getVehicleDriverHistory(
   vehicleId
 ) {
   try {
     const response = await api.get(
-      `/vehicles/${vehicleId}/remittance-history`
+      `/vehicles/${vehicleId}/driver-history`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load driver history.";
+
+    throw new Error(message);
+  }
+}
+
+
+// ============================================================
+// REMITTANCES
+// ============================================================
+
+export async function listRemittances(
+  params = {}
+) {
+  try {
+    const response = await api.get(
+      "/remittances",
+      { params }
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load remittances.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function getVehicleRemittanceHistory(
+  vehicleId,
+  params = {}
+) {
+  try {
+    const response = await api.get(
+      `/vehicles/${vehicleId}/remittances`,
+      { params }
     );
 
     return response.data;
@@ -295,12 +545,90 @@ export async function getVehicleRemittanceHistory(
 }
 
 
+export async function updateRemittance(
+  remittanceId,
+  data
+) {
+  try {
+    const response = await api.patch(
+      `/remittances/${remittanceId}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to update remittance.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function promptRemittance(
+  remittanceId
+) {
+  try {
+    const response = await api.post(
+      `/remittances/${remittanceId}/prompt`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to prompt remittance.";
+
+    throw new Error(message);
+  }
+}
+
+
 // ============================================================
-// LOGOUT
+// FARE PAYMENTS
 // ============================================================
 
-export function logout() {
-  clearTokens();
+export async function createFarePayment(
+  paymentData
+) {
+  try {
+    const response = await api.post(
+      "/fare-payments",
+      paymentData
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to create fare payment.";
+
+    throw new Error(message);
+  }
+}
+
+
+export async function getFarePayment(
+  paymentId
+) {
+  try {
+    const response = await api.get(
+      `/fare-payments/${paymentId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load fare payment.";
+
+    throw new Error(message);
+  }
 }
 
 

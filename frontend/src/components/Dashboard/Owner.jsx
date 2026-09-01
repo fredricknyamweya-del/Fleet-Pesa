@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BusFront,
   Clock3,
   TrendingUp,
   Users,
 } from "lucide-react";
+
+import * as api from "../../lib/api.js";
+
 import {
   CartesianGrid,
   Line,
@@ -39,14 +42,6 @@ const weeklyRevenue = [
 |--------------------------------------------------------------------------
 */
 
-const sampleShortfall = {
-  id: "rem-1042",
-  driver_name: "Peter Omondi",
-  vehicle: "KDJ 421A",
-  expected_amount: 24000,
-  actual_amount: 14600,
-  timestamp: "2026-08-21T08:40:00Z",
-};
 
 /*
 |--------------------------------------------------------------------------
@@ -127,10 +122,59 @@ const summaryCards = [
 */
 
 export function Owner() {
-  const [showShortfall, setShowShortfall] = useState(true);
-  const [isResolved, setIsResolved] = useState(false);
+  const [showShortfall, setShowShortfall] = useState(false);
+  const [shortfall, setShortfall] = useState(null);
+  const [isLoadingShortfall, setIsLoadingShortfall] = useState(true);
+  const [shortfallError, setShortfallError] = useState("");
 
-  const hasShortfall = !isResolved;
+  useEffect(() => {
+    let isMounted = true;
+
+    async function loadShortfall() {
+      try {
+        setIsLoadingShortfall(true);
+        setShortfallError("");
+
+        const response = await api.listRemittances({
+          status: "short",
+        });
+
+        const remittances =
+          Array.isArray(response)
+            ? response
+            : response?.remittances || [];
+
+        const unresolved = remittances.find(
+          (item) =>
+            item.status === "short" &&
+            !item.resolved
+        );
+
+        if (isMounted) {
+          setShortfall(unresolved || null);
+        }
+      } catch (error) {
+        if (isMounted) {
+          setShortfallError(
+            error?.message ||
+              "Unable to load remittance shortfalls."
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingShortfall(false);
+        }
+      }
+    }
+
+    loadShortfall();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const hasShortfall = Boolean(shortfall);
 
   return (
     <div className="owner-dashboard">
@@ -184,34 +228,41 @@ export function Owner() {
           SHORTFALL ALERT
       ========================================================== */}
 
-      {hasShortfall && (
-        <section
-          className={`${
-            isResolved
-              ? "border-emerald-200 bg-emerald-50"
-              : "border-amber-200 bg-amber-50"
-          } shortfall-alert mt-6 mb-6 rounded-2xl p-4 shadow-sm`}
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {isLoadingShortfall && (
+        <section className="mt-6 mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-4 shadow-sm">
+          <p className="text-sm font-medium text-slate-600">
+            Loading remittance shortfalls...
+          </p>
+        </section>
+      )}
 
+      {shortfallError && (
+        <section className="mt-6 mb-6 rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm">
+          <p className="text-sm font-medium text-red-700">
+            {shortfallError}
+          </p>
+        </section>
+      )}
+
+      {hasShortfall && shortfall && (
+        <section className="shortfall-alert mt-6 mb-6 rounded-2xl border border-amber-200 bg-amber-50 p-4 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p
-                className={`shortfall-alert-label text-xs font-semibold uppercase tracking-[0.12em] ${
-                  isResolved
-                    ? "text-emerald-700"
-                    : "text-amber-700"
-                }`}
-              >
-                {isResolved
-                  ? "Resolved shortfall"
-                  : "Shortfall alert"}
+              <p className="shortfall-alert-label text-xs font-semibold uppercase tracking-[0.12em] text-amber-700">
+                Shortfall alert
               </p>
 
               <h3 className="shortfall-alert-title mt-1 text-lg font-bold text-slate-900">
-                {isResolved
-                  ? "Peter Omondi remittance has been resolved"
-                  : "Peter Omondi has a remittance gap"}
+                Remittance #{shortfall.id} has a shortfall
               </h3>
+
+              <p className="mt-1 text-sm text-slate-600">
+                Expected KES{" "}
+                {Number(shortfall.expected_amount || 0).toLocaleString("en-KE")}
+                {" · "}
+                Received KES{" "}
+                {Number(shortfall.actual_amount || 0).toLocaleString("en-KE")}
+              </p>
             </div>
 
             <button
@@ -219,11 +270,8 @@ export function Owner() {
               onClick={() => setShowShortfall(true)}
               className="inline-flex items-center justify-center rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-slate-800"
             >
-              {isResolved
-                ? "View resolved record"
-                : "View details"}
+              View details
             </button>
-
           </div>
         </section>
       )}
@@ -338,13 +386,20 @@ export function Owner() {
           SHORTFALL MODAL
       ========================================================== */}
 
-      {showShortfall && (
-        <ShortfallModal
-          remittance={sampleShortfall}
-          onClose={() => setShowShortfall(false)}
-          onResolved={() => setIsResolved(true)}
-        />
-      )}
+      {showShortfall && shortfall && (
+  <ShortfallModal
+    remittance={{
+      ...shortfall,
+      timestamp: shortfall.submitted_at,
+      vehicle: `Vehicle #${shortfall.vehicle_id}`,
+    }}
+    onClose={() => setShowShortfall(false)}
+    onResolved={() => {
+      setShortfall(null);
+      setShowShortfall(false);
+    }}
+  />
+)}
 
     </div>
   );
