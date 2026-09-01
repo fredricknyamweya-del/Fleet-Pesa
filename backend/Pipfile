@@ -9,9 +9,11 @@ flask-sqlalchemy = "*"
 flask-migrate = "*"
 flask-bcrypt = "*"
 flask-jwt-extended = "*"
-flask-cors = "*"
+flask-restful = "*"
 marshmallow = "*"
 marshmallow-sqlalchemy = "*"
+flask-marshmallow = "*"
+flask-cors = "*"
 python-dotenv = "*"
 
 [dev-packages]

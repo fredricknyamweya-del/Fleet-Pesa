@@ -86,8 +86,11 @@ Base URL: `http://localhost:5000/api`
 
 | Method | Endpoint | Description |
 |---|---|---|
-| POST | `/auth/register` | Create a new admin or driver account. Admin registration creates a matching `FleetOwner` account. |
+| POST | `/auth/signup` | Create a new admin or driver account. Admin signup creates a matching `FleetOwner` account. |
 | POST | `/auth/login` | Log in, returns JWT |
+| POST | `/auth/refresh` | Refresh an access token |
+| GET | `/auth/me` | Get the authenticated user |
+| GET | `/` | API health check |
 | GET | `/vehicles` | List all vehicles for the logged-in fleet owner account |
 | POST | `/vehicles` | Add a vehicle |
 | GET | `/vehicles/<id>` | Get one vehicle's details |
@@ -95,14 +98,22 @@ Base URL: `http://localhost:5000/api`
 | DELETE | `/vehicles/<id>` | Remove a vehicle (soft-delete via `is_active`) |
 | POST | `/vehicles/<id>/assign-driver` | Assign or reassign a driver to a vehicle — closes the previous `DriverAssignment` row and opens a new one, atomically |
 | GET | `/vehicles/<id>/driver-history` | List all past and current driver assignments for a vehicle |
+| GET | `/vehicles/<id>/remittances?status=paid&from=YYYY-MM-DD&to=YYYY-MM-DD` | List remittances for a vehicle with optional status and date filters |
+| GET | `/driver-assignments` | List driver assignments for the authenticated fleet |
+| GET | `/driver-assignments/<id>` | Get one driver assignment |
+| PATCH | `/driver-assignments/<id>/unassign` | Close an active driver assignment |
 | GET | `/remittances` | List remittances (filterable by vehicle) |
 | POST | `/remittances` | Submit a new remittance |
+| GET | `/remittances/<id>` | Get one remittance |
 | PATCH | `/remittances/<id>` | Update a remittance (e.g. flag for follow-up) |
+| POST | `/remittances/<id>/prompt` | Flag an outstanding remittance for follow-up |
 | POST | `/fare-payments` | Driver prompts a customer's phone to pay a fare — initiates an M-Pesa STK push to the passenger |
 | GET | `/fare-payments/<id>` | Get one fare payment — used to poll for confirmation and display the receipt |
 | POST | `/fare-payments/mpesa-callback` | Safaricom Daraja webhook — confirms a customer fare payment |
+| PATCH | `/users/me` | Update the authenticated user's profile |
+| PATCH | `/users/me/password` | Change the authenticated user's password |
 
-All protected routes require an `Authorization: Bearer <token>` header. The `mpesa-callback` route is a public webhook validated by Safaricom's own request signature rather than a JWT.
+All protected routes require an `Authorization: Bearer <token>` header. The `mpesa-callback` route is a public webhook protected by the `MPESA_CALLBACK_SECRET` shared secret in the `X-MPESA-CALLBACK-SECRET` header rather than a JWT. Full Safaricom Daraja certificate/signature validation is still pending.
 
 ## Setup Instructions
 
@@ -153,6 +164,8 @@ See `GIT_FLOW.md` for our full branching workflow. Summary: clone from `dev` (de
 - **Maintenance tracking** — descoped from this build. Planned as a future addition: mileage-based service due dates, maintenance alerts, and a "Mark as Serviced" action.
 - **Automated tax remittance** — descoped from this build. Originally planned as a one-click M-Pesa-to-KRA remittance using Safaricom's API; kept as a future roadmap item rather than built now, to keep the current scope manageable.
 - **M-Pesa integration** uses the Safaricom Daraja sandbox, not production — a mocked/simulated callback is an acceptable fallback if sandbox credentials become a blocker, since it keeps the same data model and API shape.
+- **M-Pesa callback signature validation** currently uses an application shared secret as an interim safeguard; full Safaricom Daraja certificate/signature validation remains incomplete.
+- **Fare-payment creation** currently generates a local `mpesa_reference`; a real Daraja STK push is not yet wired, so production M-Pesa confirmation remains deferred.
 - **Customer fare payments** are recorded per-trip but not yet reconciled automatically against a specific remittance — an owner currently views fare payment totals separately from the driver's daily remittance rather than in one combined ledger.
 - Remittance status thresholds (what counts as "short" vs "late") are currently hardcoded and not yet configurable per owner.
 - No real-time updates — the dashboard requires a refresh to reflect a driver's newly submitted remittance or a customer's fare payment.

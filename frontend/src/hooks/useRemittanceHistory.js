@@ -11,7 +11,7 @@ export default function useRemittanceHistory(vehicleId, filters) {
   useEffect(() => {
     let cancelled = false;
     setState((current) => ({ ...current, loading: true, error: "" }));
-    const request = token?.startsWith("mock-token")
+    const request = token?.startsWith("mock-token") || String(vehicleId).startsWith("mock-")
       ? new Promise((resolve) => window.setTimeout(() => {
           const vehicle = MOCK_VEHICLES.find((item) => item.id === vehicleId);
           const remittances = MOCK_REMITTANCES

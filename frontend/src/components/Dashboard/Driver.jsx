@@ -4,6 +4,7 @@ import {
   Bell,
   Moon,
   Phone,
+  Settings,
   Sun,
   X,
 } from "lucide-react";
@@ -78,29 +79,7 @@ export default function Driver() {
 
   const startedVehicle = assignedVehicles.find(
     (vehicle) => vehicle.id === startedVehicleId,
-  );
-
-  function handleStartDay(event) {
-    const vehicleId = event.target.value;
-    setStartedVehicleId(vehicleId);
-    const selectedVehicle = assignedVehicles.find(
-      (vehicle) => vehicle.id === vehicleId,
-    );
-
-    if (selectedVehicle?.status !== "active") {
-      localStorage.removeItem("fleetpesa_driver_day_start");
-      return;
-    }
-
-    localStorage.setItem(
-      "fleetpesa_driver_day_start",
-      JSON.stringify({
-        date: new Date().toISOString().slice(0, 10),
-        vehicleId,
-        driverName: user?.name || "Peter Omondi",
-      }),
-    );
-  }
+  ) || assignedVehicles[0];
 
   function handleActivateVehicle() {
     if (!startedVehicle || startedVehicle.status !== "parked") {
@@ -298,7 +277,7 @@ export default function Driver() {
 
             <div className="driver-brand">
               <img
-                className="brand-logo"
+                className="brand-logo driver-brand-logo"
                 src="/FleetPesa%20FavIcon.jpg"
                 alt="FleetPesa"
               />
@@ -355,11 +334,13 @@ export default function Driver() {
               
 
               <button
-                className="driver-signout"
+                className="driver-theme-toggle"
                 type="button"
-                onClick={handleSignOut}
+                onClick={() => navigate("/driver/settings")}
+                aria-label="Open settings"
+                title="Settings"
               >
-                Sign out
+                <Settings size={16} />
               </button>
 
             </div>
@@ -447,6 +428,7 @@ export default function Driver() {
 
             <Avatar
               name={user?.name || "Peter Omondi"}
+              image={user?.profile_picture}
             />
 
             <div>
@@ -496,20 +478,6 @@ export default function Driver() {
                 : "Log the vehicle you started the day with."}
             </p>
           </div>
-
-          <select
-            className="driver-start-select"
-            value={startedVehicleId}
-            onChange={handleStartDay}
-            aria-label="Vehicle started today"
-          >
-            <option value="">Select vehicle</option>
-            {assignedVehicles.map((vehicle) => (
-              <option key={vehicle.id} value={vehicle.id}>
-                {vehicle.plate_number} · {vehicle.type}
-              </option>
-            ))}
-          </select>
 
           {startedVehicle?.status === "parked" && (
             <button

@@ -1,0 +1,64 @@
+Project FleetPesa {
+  database_type: 'PostgreSQL'
+  Note: 'Approved schema, 2026-08-26. Drivers on transactions are derived through timestamp-matched driver_assignments.'
+}
+
+Table fleet_owners {
+  id integer [pk, increment]
+  account_name varchar(150) [not null]
+  created_at timestamp [not null]
+}
+
+Table users {
+  id integer [pk, increment]
+  fleet_owner_id integer [ref: > fleet_owners.id, null]
+  username varchar(80) [not null, unique]
+  name varchar(120) [not null]
+  phone varchar(15) [not null, unique]
+  password_hash varchar(255) [not null]
+  role varchar(10) [not null, note: 'admin or driver']
+  created_at timestamp [not null]
+  notification_preference varchar(5) [not null, default: 'none']
+  is_active boolean [not null, default: true]
+}
+
+Table vehicles {
+  id integer [pk, increment]
+  plate_number varchar(20) [not null, unique]
+  vehicle_type varchar(20) [not null]
+  fleet_owner_id integer [not null, ref: > fleet_owners.id]
+  daily_expected_amount numeric(10,2) [not null]
+  is_active boolean [not null]
+}
+
+Table driver_assignments {
+  id integer [pk, increment]
+  vehicle_id integer [not null, ref: > vehicles.id]
+  driver_id integer [not null, ref: > users.id]
+  assigned_at timestamp [not null]
+  unassigned_at timestamp [null]
+}
+
+Table remittances {
+  id integer [pk, increment]
+  vehicle_id integer [not null, ref: > vehicles.id]
+  expected_amount numeric(10,2) [not null]
+  actual_amount numeric(10,2) [not null]
+  status varchar(10) [not null]
+  payment_status varchar(15) [not null]
+  mpesa_reference varchar(50) [null]
+  mpesa_transaction_code varchar(20) [null]
+  flagged_for_followup boolean [not null]
+  submitted_at timestamp [not null]
+}
+
+Table fare_payments {
+  id integer [pk, increment]
+  vehicle_id integer [not null, ref: > vehicles.id]
+  customer_phone varchar(15) [not null]
+  amount numeric(10,2) [not null]
+  mpesa_reference varchar(100) [unique, null]
+  mpesa_transaction_code varchar(100) [null]
+  payment_status varchar(20) [not null]
+  requested_at timestamp [not null]
+}

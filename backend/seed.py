@@ -50,50 +50,59 @@ def seed():
             fleet_owner_id=tomashi_circle.id,
             username="owner_moses",
             name="Moses Kiptoo",
-            phone="+254712345001",
-            password_hash="pbkdf2:sha256:fakehash-moses",
-            role="admin",
+            phone="0712345001",
+            password_hash="",
+            role="owner",
         )
         admin_grace = User(
             fleet_owner_id=tomashi_circle.id,
             username="owner_grace",
             name="Grace Wanjiru",
-            phone="+254712345002",
-            password_hash="pbkdf2:sha256:fakehash-grace",
-            role="admin",
+            phone="0712345002",
+            password_hash="",
+            role="owner",
         )
         admin_peter = User(
             fleet_owner_id=rainbow_shuttle.id,
             username="owner_peter",
             name="Peter Mwangi",
-            phone="+254712345006",
-            password_hash="pbkdf2:sha256:fakehash-peter",
-            role="admin",
+            phone="0712345006",
+            password_hash="",
+            role="owner",
         )
         driver_james = User(
             username="driver_james",
             name="James Otieno",
-            phone="+254712345003",
-            password_hash="pbkdf2:sha256:fakehash-james",
+            phone="0712345003",
+            password_hash="",
             role="driver",
         )
         driver_alex = User(
             username="driver_alex",
             name="Alex Kimutai",
-            phone="+254712345004",
-            password_hash="pbkdf2:sha256:fakehash-alex",
+            phone="0712345004",
+            password_hash="",
             role="driver",
         )
         driver_lucy = User(
             username="driver_lucy",
             name="Lucy Nafula",
-            phone="+254712345005",
-            password_hash="pbkdf2:sha256:fakehash-lucy",
+            phone="0712345005",
+            password_hash="",
             role="driver",
         )
         db.session.add_all(
             [admin_moses, admin_grace, admin_peter, driver_james, driver_alex, driver_lucy]
         )
+        for user in [
+            admin_moses,
+            admin_grace,
+            admin_peter,
+            driver_james,
+            driver_alex,
+            driver_lucy,
+        ]:
+            user.set_password("fleetpesa123")
         db.session.commit()
 
         # ------------------------------------------------------------------
@@ -227,7 +236,7 @@ def seed():
         # ------------------------------------------------------------------
         fare_confirmed = FarePayment(
             vehicle_id=vehicle_kaa.id,
-            customer_phone="+254798765001",
+            customer_phone="0798765001",
             amount=100,
             mpesa_reference="FARE-2001",
             mpesa_transaction_code="SFC2EEEFFF",
@@ -236,7 +245,7 @@ def seed():
         )
         fare_pending = FarePayment(
             vehicle_id=vehicle_kbb.id,
-            customer_phone="+254798765002",
+            customer_phone="0798765002",
             amount=80,
             mpesa_reference="FARE-2002",
             mpesa_transaction_code=None,
@@ -245,7 +254,7 @@ def seed():
         )
         fare_failed = FarePayment(
             vehicle_id=vehicle_kcc.id,
-            customer_phone="+254798765003",
+            customer_phone="0798765003",
             amount=150,
             mpesa_reference="FARE-2003",
             mpesa_transaction_code=None,

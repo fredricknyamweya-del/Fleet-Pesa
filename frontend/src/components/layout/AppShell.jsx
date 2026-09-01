@@ -1,4 +1,4 @@
-import { CircleHelp, Moon, Sun, X } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Outlet, useLocation } from "react-router-dom";
 
@@ -20,8 +20,6 @@ export function AppShell() {
 
   const { isDark, toggleTheme } = useTheme();
   const { user } = useAuth();
-
-  const [showFaq, setShowFaq] = useState(false);
 
   const {
     notifications,
@@ -103,46 +101,19 @@ export function AppShell() {
               aria-label={`Switch to ${
                 isDark ? "light" : "dark"
               } mode`}
-              title={`Switch to ${
-                isDark ? "light" : "dark"
-              } mode`}
             >
-              {isDark ? (
-                <Sun size={18} />
-              ) : (
-                <Moon size={18} />
-              )}
+              {isDark ? <Sun size={18} /> : <Moon size={18} />}
             </button>
 
-            
-            <button
-              className="icon-button"
-              type="button"
-              aria-label="Help"
-              onClick={() =>
-                setShowFaq((open) => !open)
-              }
-            >
-              <CircleHelp
-                size={19}
-                strokeWidth={1.8}
-              />
-            </button>
-
-            
             <NotificationBell
               notifications={visibleNotifications}
               unreadCount={unreadCount}
               onOpen={handleNotificationsOpened}
             />
 
-            {/* Avatar */}
             <div className="topbar-avatar">
               {user?.profile_picture ? (
-                <img
-                  src={user.profile_picture}
-                  alt=""
-                />
+                <img src={user.profile_picture} alt="" />
               ) : (
                 initials
               )}
@@ -150,25 +121,6 @@ export function AppShell() {
           </div>
 
           
-          {showFaq && (
-            <div className="topbar-popover faq-popover">
-              <button
-                type="button"
-                aria-label="Close FAQ"
-                onClick={() => setShowFaq(false)}
-              >
-                <X size={15} />
-              </button>
-
-              <strong>FleetPesa FAQ</strong>
-
-              <p>
-                Need help with remittances or fleet
-                records? Open Settings to update your
-                account details.
-              </p>
-            </div>
-          )}
         </header>
 
         <section
