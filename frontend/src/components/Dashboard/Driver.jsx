@@ -12,7 +12,6 @@ import {
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTheme } from "../../context/ThemeContext.jsx";
 import { listVehicles } from "../../lib/api.js";
-import { MOCK_VEHICLES } from "../../data/mockVehicles.js";
 
 import StatusBadge from "../shared/StatusBadge.jsx";
 import { StatCard } from "../shared/StatCard";
