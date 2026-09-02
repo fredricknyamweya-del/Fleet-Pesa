@@ -11,6 +11,7 @@ import {
 
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTheme } from "../../context/ThemeContext.jsx";
+import { listVehicles } from "../../lib/api.js";
 import { MOCK_VEHICLES } from "../../data/mockVehicles.js";
 
 import StatusBadge from "../shared/StatusBadge.jsx";
@@ -49,65 +50,90 @@ export default function Driver() {
   const [notificationCount, setNotificationCount] =
     useState(3);
 
-  const [vehicles, setVehicles] = useState(() => {
-    try {
-      const stored = localStorage.getItem("fleetpesa_mock_vehicles");
-      return stored ? JSON.parse(stored) : MOCK_VEHICLES;
-    } catch {
-      return MOCK_VEHICLES;
-    }
-  });
+const [vehicles, setVehicles] = useState([]);
+const [vehicleLoading, setVehicleLoading] = useState(true);
+const [vehicleError, setVehicleError] = useState("");  
+
   const [startedVehicleId, setStartedVehicleId] = useState(() => {
-    try {
-      const stored = JSON.parse(
-        localStorage.getItem("fleetpesa_driver_day_start") || "null",
-      );
-      return stored?.date === new Date().toISOString().slice(0, 10)
-        ? stored.vehicleId
-        : "";
-    } catch {
-      return "";
-    }
-  });
+  try {
+    const stored = JSON.parse(
+      localStorage.getItem("fleetpesa_driver_day_start") || "null",
+    );
+
+    return stored?.date === new Date().toISOString().slice(0, 10)
+      ? Number(stored.vehicleId)
+      : null;
+  } catch {
+    return null;
+  }
+});
 
   const quickAmounts = [1500, 3000, 4500];
 
-  const assignedVehicles = useMemo(() => {
-    const driverName = user?.name || "Peter Omondi";
-    return vehicles.filter((vehicle) => vehicle.driver_name === driverName);
-  }, [user?.name, vehicles]);
+  useEffect(() => {
+  let cancelled = false;
 
-  const startedVehicle = assignedVehicles.find(
-    (vehicle) => vehicle.id === startedVehicleId,
+  async function loadVehicles() {
+    try {
+      setVehicleLoading(true);
+      setVehicleError("");
+
+      const response = await listVehicles();
+
+      if (!cancelled) {
+        setVehicles(response?.vehicles || []);
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setVehicleError(
+          error.message || "Unable to load assigned vehicle."
+        );
+        setVehicles([]);
+      }
+    } finally {
+      if (!cancelled) {
+        setVehicleLoading(false);
+      }
+    }
+  }
+
+  if (user?.id) {
+    loadVehicles();
+  } else {
+    setVehicleLoading(false);
+  }
+
+  return () => {
+    cancelled = true;
+  };
+}, [user?.id]);
+
+  const assignedVehicles = useMemo(
+  () => vehicles.filter((vehicle) => vehicle.is_active),
+  [vehicles],
+);
+
+  const startedVehicle =
+  assignedVehicles.find(
+    (vehicle) => Number(vehicle.id) === Number(startedVehicleId),
   ) || assignedVehicles[0];
 
-  function handleActivateVehicle() {
-    if (!startedVehicle || startedVehicle.status !== "parked") {
-      return;
-    }
-
-    const activatedVehicle = {
-      ...startedVehicle,
-      status: "active",
-    };
-    const updatedVehicles = vehicles.map((vehicle) =>
-      vehicle.id === activatedVehicle.id ? activatedVehicle : vehicle,
-    );
-
-    setVehicles(updatedVehicles);
-    localStorage.setItem(
-      "fleetpesa_mock_vehicles",
-      JSON.stringify(updatedVehicles),
-    );
-    localStorage.setItem(
-      "fleetpesa_driver_day_start",
-      JSON.stringify({
-        date: new Date().toISOString().slice(0, 10),
-        vehicleId: activatedVehicle.id,
-        driverName: user?.name || "Peter Omondi",
-      }),
-    );
+function handleActivateVehicle() {
+  if (!startedVehicle) {
+    return;
   }
+
+  setStartedVehicleId(startedVehicle.id);
+
+  localStorage.setItem(
+    "fleetpesa_driver_day_start",
+    JSON.stringify({
+      date: new Date().toISOString().slice(0, 10),
+      vehicleId: startedVehicle.id,
+      driverName: user?.name || "",
+    }),
+  );
+}    
 
   useEffect(() => {
     if (!successMessage) {
@@ -227,7 +253,7 @@ export default function Driver() {
 
             <div className="receipt-row">
               <span>Vehicle</span>
-              <strong>KDJ 421A</strong>
+              <strong>{startedVehicle?.plate_number || "—"}</strong>
             </div>
 
             <div className="receipt-row">
@@ -438,7 +464,7 @@ export default function Driver() {
               </h1>
 
               <p className="driver-vehicle">
-                KDJ 421A · Toyota Hiace
+                {startedVehicle ? `${startedVehicle.plate_number} · ${startedVehicle.vehicle_type}` : "No vehicle assigned"}
               </p>
 
             </div>
@@ -474,7 +500,7 @@ export default function Driver() {
             </p>
             <p className="driver-start-copy">
               {startedVehicle
-                ? `${startedVehicle.plate_number} · ${startedVehicle.type}${startedVehicle.status === "parked" ? " · Parked" : ""}`
+                ? `${startedVehicle.plate_number} · ${startedVehicle.vehicle_type}${startedVehicle.status === "parked" ? " · Parked" : ""}`
                 : "Log the vehicle you started the day with."}
             </p>
           </div>

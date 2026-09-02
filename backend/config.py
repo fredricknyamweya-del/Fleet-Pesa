@@ -19,6 +19,7 @@ class Config:
     MPESA_PASSKEY = os.getenv("MPESA_PASSKEY", "")
     MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "")
     MPESA_ENV = os.getenv("MPESA_ENV", "sandbox")
+    MPESA_TEST_MODE = os.getenv("MPESA_TEST_MODE", "false").lower() == "true"
 
     MPESA_CALLBACK_SECRET = os.getenv(
         "MPESA_CALLBACK_SECRET",

@@ -60,6 +60,15 @@ def initiate_stk_push(
     shortcode = current_app.config.get("MPESA_SHORTCODE")
     callback_url = current_app.config.get("MPESA_CALLBACK_URL")
 
+    if current_app.config.get("MPESA_TEST_MODE"):
+        return {
+            "MerchantRequestID": "TEST-MERCHANT-REQUEST",
+            "CheckoutRequestID": f"ws_CO_TEST_{account_reference}",
+            "ResponseCode": "0",
+            "ResponseDescription": "Success. Test mode request accepted",
+            "CustomerMessage": "Success. Test mode request accepted",
+        }
+
     if not shortcode:
         raise RuntimeError("M-Pesa shortcode is not configured")
 
