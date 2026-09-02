@@ -60,8 +60,39 @@ class FarePaymentCallback(Resource):
 def _current_user():
     return db.session.get(User, int(get_jwt_identity()))
 
-
 class FarePaymentCreate(Resource):
+    @jwt_required()
+    def get(self):
+        user = _current_user()
+
+        if user is None:
+            return {"message": "User not found"}, 404
+
+        payments = (
+            FarePayment.query
+            .join(Vehicle, FarePayment.vehicle_id == Vehicle.id)
+            .order_by(FarePayment.requested_at.desc())
+            .all()
+        )
+
+        visible_payments = []
+
+        for payment in payments:
+            vehicle = payment.vehicle
+
+            if _can_read_transaction(
+                user,
+                vehicle,
+                payment.requested_at,
+            ):
+                visible_payments.append(
+                    fare_payment_schema.dump(payment)
+                )
+
+        return {
+            "fare_payments": visible_payments
+        }, 200
+
     @jwt_required()
     def post(self):
         user = _current_user()
@@ -145,7 +176,6 @@ class FarePaymentCreate(Resource):
             "fare_payment": fare_payment_schema.dump(payment),
             "mpesa_response": mpesa_response,
         }, 201
-
 
 class FarePaymentDetail(Resource):
     @jwt_required()

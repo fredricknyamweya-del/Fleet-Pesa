@@ -112,6 +112,7 @@ const [vehicleError, setVehicleError] = useState("");
   [vehicles],
 );
 
+
   const startedVehicle =
   assignedVehicles.find(
     (vehicle) => Number(vehicle.id) === Number(startedVehicleId),
@@ -487,33 +488,58 @@ function handleActivateVehicle() {
           type="warning"
         />
 
+<section className="driver-start-card" aria-labelledby="start-day-title">
+  <div>
+    <p className="driver-label" id="start-day-title">
+      Vehicle started today
+    </p>
 
-        
+    <p className="driver-start-copy">
+      {startedVehicle
+        ? `${startedVehicle.plate_number} · ${startedVehicle.vehicle_type}`
+        : "Select the vehicle you started the day with."}
+    </p>
+  </div>
 
-        <section className="driver-start-card" aria-labelledby="start-day-title">
-          <div>
-            <p className="driver-label" id="start-day-title">
-              {startedVehicle?.status === "parked"
-                ? "Vehicle selected"
-                : "Vehicle started today"}
-            </p>
-            <p className="driver-start-copy">
-              {startedVehicle
-                ? `${startedVehicle.plate_number} · ${startedVehicle.vehicle_type}${startedVehicle.status === "parked" ? " · Parked" : ""}`
-                : "Log the vehicle you started the day with."}
-            </p>
-          </div>
+  <div className="flex items-center gap-2">
+    {assignedVehicles.length > 1 && (
+      <select
+        className="driver-start-select"
+        value={startedVehicle?.id || ""}
+        onChange={(event) => {
+          const vehicleId = Number(event.target.value);
+          setStartedVehicleId(vehicleId);
 
-          {startedVehicle?.status === "parked" && (
-            <button
-              className="driver-activate-button"
-              type="button"
-              onClick={handleActivateVehicle}
-            >
-              Activate vehicle
-            </button>
-          )}
-        </section>
+          localStorage.setItem(
+            "fleetpesa_driver_day_start",
+            JSON.stringify({
+              date: new Date().toISOString().slice(0, 10),
+              vehicleId,
+              driverName: user?.name || "",
+            }),
+          );
+        }}
+        aria-label="Select vehicle"
+      >
+        {assignedVehicles.map((vehicle) => (
+          <option key={vehicle.id} value={vehicle.id}>
+            {vehicle.plate_number} · {vehicle.vehicle_type}
+          </option>
+        ))}
+      </select>
+    )}
+
+    {startedVehicle && assignedVehicles.length === 1 && (
+      <button
+        className="driver-activate-button"
+        type="button"
+        onClick={handleActivateVehicle}
+      >
+        Confirm vehicle
+      </button>
+    )}
+  </div>
+</section>
 
         <section className="amount-card">
 

@@ -1,26 +1,12 @@
 import { Check, CircleAlert, Loader2, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Pagination from "../../components/shared/Pagination.jsx";
-import { createFarePayment } from "../../lib/api.js";
+import {
+  createFarePayment,
+  listFarePayments,
+} from "../../lib/api.js";
 
 const quickAmounts = [50, 100, 150, 200, 300];
-
-const initialPrompts = [
-  {
-    id: 1,
-    time: "10:42 AM",
-    amount: 150,
-    phone: "+254 712  ••  84",
-    status: "Paid",
-  },
-  {
-    id: 2,
-    time: "9:18 AM",
-    amount: 100,
-    phone: "+254 701  ••  26",
-    status: "Pending",
-  },
-];
 
 function formatAmount(value) {
   return Number(value || 0).toLocaleString("en-KE");
@@ -44,10 +30,55 @@ export default function FarePaymentModal({
   const [phone, setPhone] = useState("");
   const [status, setStatus] = useState("idle");
   const [errorMessage, setErrorMessage] = useState("");
-  const [prompts, setPrompts] = useState(initialPrompts);
+  const [prompts, setPrompts] = useState([]);
   const [promptPage, setPromptPage] = useState(1);
 
   const promptPageSize = 5;
+
+useEffect(() => {
+  let cancelled = false;
+
+  async function loadFarePayments() {
+    try {
+      const response = await listFarePayments();
+
+      if (!cancelled) {
+        const farePayments = response?.fare_payments || [];
+
+        setPrompts(
+          farePayments.map((payment) => ({
+            id: payment.id,
+            time: new Intl.DateTimeFormat("en-KE", {
+              hour: "numeric",
+              minute: "2-digit",
+            }).format(new Date(payment.requested_at)),
+            amount: Number(payment.amount),
+            phone: maskPhone(payment.customer_phone),
+            status:
+              payment.payment_status === "confirmed"
+                ? "Paid"
+                : payment.payment_status === "failed"
+                  ? "Failed"
+                  : "Pending",
+          })),
+        );
+      }
+    } catch (error) {
+      if (!cancelled) {
+        setErrorMessage(
+          error?.message ||
+            "Unable to load recent fare prompts.",
+        );
+      }
+    }
+  }
+
+  loadFarePayments();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
   const promptPageCount = Math.max(
     1,

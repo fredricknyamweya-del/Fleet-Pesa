@@ -611,6 +611,19 @@ export async function createFarePayment(
   }
 }
 
+export async function listFarePayments() {
+  try {
+    const response = await api.get("/fare-payments");
+    return response.data;
+  } catch (error) {
+    const message =
+      error?.response?.data?.error ||
+      error?.response?.data?.message ||
+      "Unable to load fare payments.";
+
+    throw new Error(message);
+  }
+}
 
 export async function getFarePayment(
   paymentId
