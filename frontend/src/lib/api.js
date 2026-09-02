@@ -240,7 +240,7 @@ export function register({
   phone,
   password,
 }) {
-  return request("/auth/register", {
+  return request("/auth/signup", {
     method: "POST",
     body: {
       role,
