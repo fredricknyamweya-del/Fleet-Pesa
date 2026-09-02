@@ -15,12 +15,14 @@ marshmallow-sqlalchemy = "*"
 flask-marshmallow = "*"
 flask-cors = "*"
 python-dotenv = "*"
+requests = "*"
 
 [dev-packages]
 pytest = "*"
 pytest-cov = "*"
 pytest-env = "*"
 faker = "*"
+python-dotenv="*"
 
 [scripts]
 start = "flask run"

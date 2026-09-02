@@ -26,6 +26,8 @@ from routes.remittance_routes import (
 from routes.vehicle_routes import VehicleDetail, VehicleList
 from routes.system_routes import Health
 
+from routes.mpesa import Mpesa
+
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -54,6 +56,9 @@ def create_app(config_class=Config):
     api.add_resource(FarePaymentCallback, "/fare-payments/mpesa-callback")
 
     api.add_resource(Health, "/")
+
+    api.add_resource(Mpesa, "/mpesa-stk-push")
+
     
     CORS(app)
     db.init_app(app)
