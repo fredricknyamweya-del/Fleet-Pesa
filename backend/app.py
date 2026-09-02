@@ -50,6 +50,15 @@ def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
+    # Initialize CORS FIRST with explicit config for Vite dev server
+    CORS(app, resources={
+        r"/*": {
+            "origins": ["http://localhost:5173", "http://localhost:5174", "http://127.0.0.1:5173", "http://127.0.0.1:5174"],
+            "methods": ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
+
     # Register auth resources
     api.add_resource(SignupResource, "/auth/signup")
     api.add_resource(LoginResource, "/auth/login")
@@ -84,8 +93,7 @@ def create_app(config_class=Config):
     # Register system resources
     api.add_resource(Health, "/")
 
-    # Initialize extensions
-    CORS(app)
+    # Initialize extensions (CORS already initialized above)
     db.init_app(app)
     bcrypt.init_app(app)
     jwt.init_app(app)
