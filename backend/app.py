@@ -1,5 +1,10 @@
 from flask import Flask
 from flask_cors import CORS
+
+from flask_jwt_extended import (
+    JWTManager
+)
+
 from config import Config
 from extensions import api, bcrypt, db, jwt, migrate,ma
 from models.user import User
@@ -28,8 +33,11 @@ from routes.system_routes import Health
 
 from routes.mpesa import Mpesa
 
+
 def create_app(config_class=Config):
     app = Flask(__name__)
+    jwt = JWTManager(app)
+
     app.config.from_object(config_class)
 
     api.add_resource(SignupResource, "/auth/signup")
