@@ -1,12 +1,21 @@
-from flask import request
+from flask import request, make_response
 from flask_restful import Resource
-from flask_jwt_extended import create_access_token
-from sqlalchemy.exc import IntegrityError
+# from flask_jwt_extended import create_access_token, set_access_cookies
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+
+from flask_jwt_extended import (
+    create_access_token,
+    set_access_cookies
+)
+
+import logging
+
 
 from extensions import db
 from models.user import User
 from schemas.user_schema import user_schema
 
+logger = logging.getLogger(__name__)
 
 class SignupResource(Resource):
     """
@@ -95,59 +104,66 @@ class LoginResource(Resource):
     """
 
     def post(self):
-        data = request.get_json(silent=True)
+        try:
+            data = request.get_json(silent=True)
 
-        if not data:
-            return {"error": "Request body must contain JSON data."}, 400
+            if not data:
+                return {
+                    "error": "Request body must contain JSON data."
+                }, 400
 
-        phone = str(data.get("phone", "")).strip()
-        password = data.get("password")
-        role = str(data.get("role", "")).strip().lower()
+            phone = str(data.get("phone", "")).strip()
+            password = data.get("password")
+            role = str(data.get("role", "")).strip().lower()
 
-        # -------------------------------------------------------------
-        # Validate required fields
-        # -------------------------------------------------------------
-        if not phone:
-            return {"error": "Phone number is required."}, 400
+            if not phone:
+                return {
+                    "error": "Phone number is required."
+                }, 400
 
-        if not password:
-            return {"error": "Password is required."}, 400
+            if not password:
+                return {
+                    "error": "Password is required."
+                }, 400
 
-        if role not in ("owner", "driver"):
-            return {"error": "Role must be either owner or driver."}, 400
+            if role not in ("owner", "driver"):
+                return {
+                    "error": "Role must be either owner or driver."
+                }, 400
 
-        # -------------------------------------------------------------
-        # Find user
-        # -------------------------------------------------------------
-        user = User.query.filter_by(
-            phone=phone,
-            role=role
-        ).first()
+            user = User.query.filter_by(
+                phone=phone,
+                role=role
+            ).first()
 
-        # Do not reveal whether phone or password was incorrect
-        if not user or not user.check_password(password):
+            # Do not reveal whether the phone or password was incorrect
+            if not user or not user.check_password(password):
+                return {
+                    "error": "Invalid phone number, password, or account type."
+                }, 401
+
+            access_token = create_access_token(identity=user.id)
+
+            response = make_response({
+                "message": "Login successful",
+                "user": user.to_dict()
+            })
+
+            set_access_cookies(response, access_token)
+
+            return response
+
+        except SQLAlchemyError:
+            logger.exception("Database error during login")
             return {
-                "error": "Invalid phone number, password, or account type."
-            }, 401
+                "error": "An internal server error occurred."
+            }, 500
 
-        # -------------------------------------------------------------
-        # Create JWT
-        # -------------------------------------------------------------
-        access_token = create_access_token(
-            identity=str(user.id),
-            additional_claims={
-                "role": user.role,
-                "phone": user.phone,
-            },
-        )
-
-        # -------------------------------------------------------------
-        # Response
-        # -------------------------------------------------------------
-        return {
-            "message": "Login successful.",
-            "user": user.to_dict(),
-        }, 200
+        except Exception:
+            logger.exception("Unexpected error during login")
+            return {
+                "error": "An internal server error occurred."
+            }, 500
 
 
 
