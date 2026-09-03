@@ -81,7 +81,7 @@ export default function VehicleDetailPage() {
 
         const [vehicleData, remittanceData] = await Promise.all([
           api.getVehicle(id),
-          api.listRemittances({ vehicleId: id }),
+          api.getVehicleRemittanceHistory(id),
         ]);
 
         if (!isMounted) return;
