@@ -1,14 +1,13 @@
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useState,
 } from "react";
 
-import {
-  MOCK_DRIVER_NOTIFICATIONS,
-  MOCK_OWNER_NOTIFICATIONS,
-} from "../data/mockNotifications.js";
+import { MOCK_DRIVER_NOTIFICATIONS } from "../data/mockNotifications.js";
+import useOwnerNotifications from "../hooks/useOwnerNotifications.js";
 
 const NotificationContext = createContext(null);
 
@@ -17,15 +16,20 @@ export function NotificationProvider({
   role = "owner",
 }) {
   const normalizedRole = String(role).toLowerCase();
+  const isOwner = normalizedRole === "owner";
 
-  const initialNotifications =
-    normalizedRole === "driver"
-      ? MOCK_DRIVER_NOTIFICATIONS
-      : MOCK_OWNER_NOTIFICATIONS;
+  const { notifications: ownerNotifications, loading: ownerLoading } =
+    useOwnerNotifications({ enabled: isOwner });
 
   const [notifications, setNotifications] = useState(
-    initialNotifications
+    isOwner ? [] : MOCK_DRIVER_NOTIFICATIONS
   );
+
+  useEffect(() => {
+    if (isOwner && !ownerLoading) {
+      setNotifications(ownerNotifications);
+    }
+  }, [isOwner, ownerLoading, ownerNotifications]);
 
   const unreadCount = useMemo(
     () =>
@@ -69,6 +73,7 @@ export function NotificationProvider({
     markAsRead,
     markAllAsRead,
     clearNotifications,
+    loading: isOwner ? ownerLoading : false,
   };
 
   return (
