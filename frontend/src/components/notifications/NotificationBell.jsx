@@ -264,6 +264,62 @@ export default function NotificationBell({
                 
 
                 if (isOwner) {
+                  if (item.type === "shortfall") {
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex gap-3 border-b border-slate-100 px-4 py-4 ${
+                          unread ? "bg-amber-50/60" : "bg-white"
+                        }`}
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-amber-50 text-amber-600">
+                          <Wallet size={18} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-bold text-[#0F2440]">
+                              {item.title || "Remittance shortfall"}
+                            </p>
+
+                            {unread && (
+                              <span
+                                className="mt-1 size-2 shrink-0 rounded-full bg-amber-500"
+                                aria-label="Unread"
+                              />
+                            )}
+                          </div>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            {item.driver_name || "Driver"}
+                          </p>
+
+                          {item.message && (
+                            <p className="mt-1 text-xs text-slate-400">
+                              {item.message}
+                            </p>
+                          )}
+
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
+                              Short {currency(item.amount)}
+                            </span>
+
+                            {item.vehicle_registration && (
+                              <span className="rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">
+                                {item.vehicle_registration}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            {item.time || formatDate(item.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={item.id}
