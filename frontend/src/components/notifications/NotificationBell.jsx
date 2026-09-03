@@ -136,7 +136,9 @@ export default function NotificationBell({
   const ownerNotifications = allNotifications.filter(
     (item) =>
       item?.type === "remittance_received" ||
-      item?.type === "daily_remittance_received"
+      item?.type === "daily_remittance_received" ||
+      item?.type === "shortfall" ||
+      item?.type === "vehicle_assigned"
   );
 
   
