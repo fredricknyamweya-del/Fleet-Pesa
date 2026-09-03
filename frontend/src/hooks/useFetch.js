@@ -1,7 +1,8 @@
+
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api";
+  import.meta.env.VITE_API_BASE_URL || "http://localhost:5555/api";
 
 export default function useFetch() {
   const [data, setData] = useState(null);
@@ -11,7 +12,7 @@ export default function useFetch() {
   const abortControllerRef = useRef(null);
 
   const request = useCallback(async (endpoint, options = {}) => {
-    // Cancel previous request
+    // Cancel the previous request
     abortControllerRef.current?.abort();
 
     const controller = new AbortController();
@@ -28,7 +29,9 @@ export default function useFetch() {
         ...fetchOptions
       } = options;
 
-      const token = localStorage.getItem("fleetpesa_token");
+      // Get authentication token
+      // const token = localStorage.getItem("fleetpesa_token");
+      const token = localStorage.getItem("access_token");
 
       const isFormData = body instanceof FormData;
 
@@ -37,16 +40,19 @@ export default function useFetch() {
         ...headers,
       };
 
-      // Let the browser set Content-Type for FormData.
-      if (!isFormData && !requestHeaders["Content-Type"]) {
-        requestHeaders["Content-Type"] = "application/json";
+      // Don't manually set Content-Type for FormData.
+      // The browser will set the correct multipart boundary.
+      if (!isFormData && body !== undefined && body !== null) {
+        requestHeaders["Content-Type"] =
+          requestHeaders["Content-Type"] || "application/json";
       }
 
-      // Authentication
+      // Add JWT token when available
       if (token) {
         requestHeaders.Authorization = `Bearer ${token}`;
       }
 
+      // Make request
       const response = await fetch(`${API_BASE_URL}${endpoint}`, {
         method,
         headers: requestHeaders,
@@ -63,13 +69,13 @@ export default function useFetch() {
         ...fetchOptions,
       });
 
-      // Handle empty responses such as 204 No Content
+      // Parse response
       let responseData = null;
 
       if (response.status !== 204) {
-        const contentType = response.headers.get("content-type");
+        const contentType = response.headers.get("content-type") || "";
 
-        if (contentType?.includes("application/json")) {
+        if (contentType.includes("application/json")) {
           responseData = await response.json();
         } else {
           responseData = await response.text();
@@ -81,19 +87,20 @@ export default function useFetch() {
         const message =
           responseData?.message ||
           responseData?.error ||
+          responseData?.msg ||
           `Request failed with status ${response.status}`;
 
         throw new Error(message);
       }
 
-      // Only update state if this request is still active
+      // Only update state if this request wasn't cancelled
       if (!controller.signal.aborted) {
         setData(responseData);
       }
 
       return responseData;
     } catch (err) {
-      // Abort is intentional
+      // Abort is intentional, so don't show it as an error
       if (err?.name === "AbortError") {
         return null;
       }
@@ -105,7 +112,7 @@ export default function useFetch() {
 
       throw err;
     } finally {
-      // Only the current request should control loading
+      // Only the active request controls loading
       if (
         abortControllerRef.current === controller &&
         !controller.signal.aborted
@@ -115,54 +122,65 @@ export default function useFetch() {
     }
   }, []);
 
+  // GET
   const get = useCallback(
-    (endpoint, options = {}) =>
-      request(endpoint, {
+    (endpoint, options = {}) => {
+      return request(endpoint, {
         ...options,
         method: "GET",
-      }),
+      });
+    },
     [request]
   );
 
+  // POST
   const post = useCallback(
-    (endpoint, body, options = {}) =>
-      request(endpoint, {
+    (endpoint, body, options = {}) => {
+      return request(endpoint, {
         ...options,
         method: "POST",
         body,
-      }),
+      });
+    },
     [request]
   );
 
+  // PUT
   const put = useCallback(
-    (endpoint, body, options = {}) =>
-      request(endpoint, {
+    (endpoint, body, options = {}) => {
+      return request(endpoint, {
         ...options,
         method: "PUT",
         body,
-      }),
+      });
+    },
     [request]
   );
 
+  // PATCH
   const patch = useCallback(
-    (endpoint, body, options = {}) =>
-      request(endpoint, {
+    (endpoint, body, options = {}) => {
+      return request(endpoint, {
         ...options,
         method: "PATCH",
         body,
-      }),
+      });
+    },
     [request]
   );
 
+  // DELETE
   const remove = useCallback(
-    (endpoint, options = {}) =>
-      request(endpoint, {
+    (endpoint, options = {}) => {
+      return request(endpoint, {
         ...options,
         method: "DELETE",
-      }),
+      });
+    },
     [request]
   );
 
+  // Reset hook state
   const reset = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -172,6 +190,7 @@ export default function useFetch() {
     setError(null);
   }, []);
 
+  // Cancel request when component unmounts
   useEffect(() => {
     return () => {
       abortControllerRef.current?.abort();

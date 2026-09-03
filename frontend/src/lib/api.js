@@ -1,20 +1,25 @@
+
 import axios from "axios";
 
+// API CONFIGURATION
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://localhost:8000/api";
+  import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
+// AXIOS INSTANCE
+
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
-    "Content-Type": "application/json",
     Accept: "application/json",
+    "Content-Type": "application/json",
   },
 });
 
 
-// ============================================================
-// TOKEN HELPERS
-// ============================================================
+// TOKEN STORAGE
+
 
 const ACCESS_TOKEN_KEY = "access_token";
 const REFRESH_TOKEN_KEY = "refresh_token";
@@ -43,237 +48,432 @@ export function clearTokens() {
 }
 
 
-// ============================================================
-// REQUEST INTERCEPTOR
-// ============================================================
 
 api.interceptors.request.use(
-  (config) => {
-    const token = getAccessToken();
+  (config) => {const token = getAccessToken();
+
+    
+    console.log(
+      "[API AUTH]",
+      config.method?.toUpperCase(),
+      config.url,
+      token
+        ? `TOKEN PRESENT (${token.length} chars)`
+        : "NO TOKEN"
+    );
 
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
 
-// ============================================================
-// MOCK AUTH FOR FRONTEND DEMO
-// ============================================================
 
-const PHONE_PATTERN = /^07\d{8}$/;
-const PASSWORD_PATTERN = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
 
-function validateMockPhone(phone) {
-  const cleanPhone = (phone || "").replace(/\s+/g, "");
+  (error) => {
+    const status = error?.response?.status;
 
-  if (!PHONE_PATTERN.test(cleanPhone)) {
-    throw new Error("Phone number must be 10 digits in the format 0701234567");
+    console.error(
+      "[API ERROR]", error?.config?.method?.toUpperCase(),
+      error?.config?.url,"STATUS:", status, "DATA:",
+      error?.response?.data
+    );
+
+    return Promise.reject(error);
   }
+);
 
-  return cleanPhone;
+
+// ERROR HELPER
+
+function getErrorMessage(error, fallbackMessage) {
+  return (
+    error?.response?.data?.message || error?.response?.data?.error || error?.response?.data?.msg ||
+    error?.message || fallbackMessage);
 }
 
-function validateMockPassword(password) {
-  if (!PASSWORD_PATTERN.test(String(password || ""))) {
-    throw new Error("Password must be at least 6 characters and include letters, numbers, and special characters.");
-  }
+// AUTH - LOGIN
 
-  return String(password);
-}
-
-function makeMockAuth({ role = "owner", phone = "", password = "", username = "", name = "" }) {
-  const safePhone = validateMockPhone(phone);
-  const safePassword = validateMockPassword(password);
-  const safeRole = role || "owner";
-  const mockToken = `mock-${safeRole}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-
-  const user = {
-    id: `mock-user-${Date.now()}`,
-    username: (username || safePhone || "demo-user").trim() || "demo-user",
-    name: (name || "Demo User").trim() || "Demo User",
-    phone: safePhone,
-    role: safeRole,
-    password: safePassword,
-  };
-
-  return {
-    token: mockToken,
-    access_token: mockToken,
-    refresh_token: mockToken,
-    user,
-    message: "Mock authentication successful.",
-  };
-}
-
-export async function login({ phone, password, role }) {
-  const cleanPhone = validateMockPhone(phone);
-  validateMockPassword(password);
-
-  const data = makeMockAuth({ phone: cleanPhone, password, role });
-
-  saveTokens(data.access_token, data.refresh_token);
-
-  return data;
-}
-
-export async function register({
-  username,
-  name,
-  phone,
-  password,
-  role,
-}) {
-  const cleanPhone = validateMockPhone(phone);
-  validateMockPassword(password);
-
-  const data = makeMockAuth({
-    username,
-    name,
-    phone: cleanPhone,
-    password,
-    role,
-  });
-
-  saveTokens(data.access_token, data.refresh_token);
-
-  return data;
-}
-
-
-// ============================================================
-// CURRENT USER
-// ============================================================
-
-export async function getCurrentUser() {
+export async function login(credentials) {
   try {
-    const response = await api.get("/auth/me");
+    const response = await api.post("/auth/login",credentials);
+
+    const data = response.data;
+
+    const accessToken =
+      data?.access_token ||data?.token;
+
+    const refreshToken =
+      data?.refresh_token;
+
+    if (!accessToken) {
+      throw new Error("Login succeeded but the backend did not return an authentication token.");}
+
+    saveTokens(accessToken,refreshToken);
+
+    console.log("[AUTH] Login successful. Access token saved:", `${accessToken.length} chars`);
+
+    return data;
+  } catch (error) {
+    throw new Error(getErrorMessage(error, "Unable to log in. Please try again."));
+  }
+}
+
+// AUTH - SIGN UP
+
+export async function register(userData) {
+  try {
+    const response = await api.post("/auth/signup", userData);
+
+    const data = response.data;
+
+    const accessToken = data?.access_token || data?.token;
+
+    const refreshToken = data?.refresh_token;
+
+    if (accessToken) {
+      saveTokens( accessToken, refreshToken );
+    }
+
+    return data;
+  } catch (error) {
+    throw new Error( getErrorMessage( error, "Unable to create account. Please try again."));
+  }
+}
+
+// AUTH - FORGOT PASSWORD
+
+export async function forgotPassword(phone) {
+  try {
+    const response = await api.post( "/auth/forgot-password", { phone,});
 
     return response.data;
   } catch (error) {
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      "Unable to load user account.";
-
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to process password reset request."
+      )
+    );
   }
 }
 
 
-// ============================================================
-// REFRESH TOKEN
-// ============================================================
+// AUTH - RESET PASSWORD
 
-export async function refreshAccessToken() {
+export async function resetPassword(
+  resetToken,
+  newPassword
+) {
   try {
-    const refreshToken = getRefreshToken();
-
-    if (!refreshToken) {
-      throw new Error("No refresh token available.");
-    }
-
     const response = await api.post(
-      "/auth/refresh",
-      {},
+      "/auth/reset-password",
       {
-        headers: {
-          Authorization: `Bearer ${refreshToken}`,
-        },
+        reset_token: resetToken,
+        new_password: newPassword,
       }
     );
 
-    const accessToken = response.data.access_token;
-
-    if (accessToken) {
-      localStorage.setItem(
-        ACCESS_TOKEN_KEY,
-        accessToken
-      );
-    }
-
-    return accessToken;
+    return response.data;
   } catch (error) {
-    clearTokens();
-
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      "Session expired. Please log in again.";
-
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to reset password."
+      )
+    );
   }
 }
 
-
-// ============================================================
-// UPDATE PROFILE
-// ============================================================
-//
-// IMPORTANT:
-// Change "/profile" below if your Flask backend uses a
-// different profile endpoint.
-// ============================================================
+// AUTH - UPDATE PROFILE
 
 export async function updateProfile(profileData) {
   try {
     const response = await api.put(
-      "/profile",
+      "/auth/profile",
       profileData
     );
 
     return response.data;
   } catch (error) {
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      "Unable to update profile.";
-
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update profile."
+      )
+    );
   }
 }
 
+// AUTH - UPDATE PASSWORD
 
-// ============================================================
-// UPDATE PASSWORD
-// ============================================================
-//
-// IMPORTANT:
-// Change "/profile/password" below if your Flask backend
-// uses a different password endpoint.
-// ============================================================
 
-export async function updatePassword(passwordData) {
+export async function updatePassword(
+  currentPassword,
+  newPassword
+) {
   try {
     const response = await api.put(
-      "/profile/password",
-      passwordData
+      "/auth/password",
+      {
+        current_password: currentPassword,
+        new_password: newPassword,
+      }
     );
 
     return response.data;
   } catch (error) {
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      "Unable to update password.";
-
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update password."
+      )
+    );
   }
 }
 
+// DRIVER ASSIGNMENTS
 
-// ============================================================
+export async function getDriverAssignments(
+  params = {}
+) {
+  try {
+    const response = await api.get(
+      "/driver-assignments",
+      {
+        params,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load driver assignments."
+      )
+    );
+  }
+}
+
+export async function createDriverAssignment(data) {
+  try {
+    const response = await api.post(
+      "/driver-assignments",
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to create driver assignment."
+      )
+    );
+  }
+}
+
+export async function getDriverAssignment(id) {
+  try {
+    const response = await api.get(
+      `/driver-assignments/${id}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load driver assignment."
+      )
+    );
+  }
+}
+
+export async function updateDriverAssignment(
+  id,
+  data
+) {
+  try {
+    const response = await api.put(
+      `/driver-assignments/${id}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update driver assignment."
+      )
+    );
+  }
+}
+
+export async function deleteDriverAssignment(id) {
+  try {
+    const response = await api.delete(
+      `/driver-assignments/${id}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to delete driver assignment."
+      )
+    );
+  }
+}
+
+export async function unassignDriver(id) {
+  try {
+    const response = await api.post(
+      `/driver-assignments/${id}/unassign`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to unassign driver."
+      )
+    );
+  }
+}
+
+// VEHICLE DRIVER HISTORY
+
+export async function getVehicleDriverHistory(
+  vehicleId
+) {
+  try {
+    const response = await api.get(
+      `/vehicles/${vehicleId}/driver-history`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load vehicle driver history."
+      )
+    );
+  }
+}
+
+// VEHICLES
+
+export async function getVehicles(params = {}) {
+  try {
+    const response = await api.get(
+      "/vehicles",
+      {
+        params,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load vehicles."
+      )
+    );
+  }
+}
+
+export async function createVehicle(data) {
+  try {
+    const response = await api.post(
+      "/vehicles",
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to create vehicle."
+      )
+    );
+  }
+}
+
+export async function getVehicle(vehicleId) {
+  try {
+    const response = await api.get(
+      `/vehicles/${vehicleId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load vehicle."
+      )
+    );
+  }
+}
+
+export async function updateVehicle(
+  vehicleId,
+  data
+) {
+  try {
+    const response = await api.put(
+      `/vehicles/${vehicleId}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update vehicle."
+      )
+    );
+  }
+}
+
+export async function deleteVehicle(vehicleId) {
+  try {
+    const response = await api.delete(
+      `/vehicles/${vehicleId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to delete vehicle."
+      )
+    );
+  }
+}
+
 // VEHICLE REMITTANCE HISTORY
-// ============================================================
-//
-// IMPORTANT:
-// Change this endpoint if your Flask backend uses a
-// different URL.
-// ============================================================
 
 export async function getVehicleRemittanceHistory(
   vehicleId,
@@ -281,22 +481,245 @@ export async function getVehicleRemittanceHistory(
 ) {
   try {
     const response = await api.get(
+<<<<<<< HEAD
       `/vehicles/${vehicleId}/remittances`,
       { params: { status, from, to, page, per_page } }
+=======
+      `/vehicles/${vehicleId}/remittances`
+>>>>>>> origin/dev
     );
 
     return response.data;
   } catch (error) {
-    const message =
-      error?.response?.data?.error ||
-      error?.response?.data?.message ||
-      "Unable to load remittance history.";
-
-    throw new Error(message);
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load vehicle remittance history."
+      )
+    );
   }
 }
 
 
+// REMITTANCES
+
+export async function getRemittances(
+  params = {}
+) {
+  try {
+    const response = await api.get(
+      "/remittances",
+      {
+        params,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load remittances."
+      )
+    );
+  }
+}
+
+export async function createRemittance(data) {
+  try {
+    const response = await api.post(
+      "/remittances",
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to create remittance."
+      )
+    );
+  }
+}
+
+export async function getRemittance(
+  remittanceId
+) {
+  try {
+    const response = await api.get(
+      `/remittances/${remittanceId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load remittance."
+      )
+    );
+  }
+}
+
+export async function updateRemittance(
+  remittanceId,
+  data
+) {
+  try {
+    const response = await api.put(
+      `/remittances/${remittanceId}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update remittance."
+      )
+    );
+  }
+}
+
+export async function deleteRemittance(
+  remittanceId
+) {
+  try {
+    const response = await api.delete(
+      `/remittances/${remittanceId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to delete remittance."
+      )
+    );
+  }
+}
+
+export async function promptRemittance(
+  remittanceId
+) {
+  try {
+    const response = await api.post(
+      `/remittances/${remittanceId}/prompt`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to send remittance prompt."
+      )
+    );
+  }
+}
+
+// FARE PAYMENTS
+
+export async function createFarePayment(data) {
+  try {
+    const response = await api.post(
+      "/fare-payments",
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to create fare payment."
+      )
+    );
+  }
+}
+
+export async function getFarePayment(
+  paymentId
+) {
+  try {
+    const response = await api.get(
+      `/fare-payments/${paymentId}`
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to load fare payment."
+      )
+    );
+  }
+}
+
+export async function updateFarePayment(
+  paymentId,
+  data
+) {
+  try {
+    const response = await api.put(
+      `/fare-payments/${paymentId}`,
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to update fare payment."
+      )
+    );
+  }
+}
+
+// M-PESA CALLBACK
+
+export async function farePaymentCallback(data) {
+  try {
+    const response = await api.post(
+      "/fare-payments/mpesa-callback",
+      data
+    );
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to process M-Pesa callback."
+      )
+    );
+  }
+}
+
+// HEALTH CHECK
+
+export async function healthCheck() {
+  try {
+    const response = await api.get("/");
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Backend is unavailable."
+      )
+    );
+  }
+}
+
+
+<<<<<<< HEAD
 // ============================================================
 // VEHICLES LIST
 // ============================================================
@@ -365,12 +788,14 @@ export async function updateRemittance(remittanceId, data) {
 
 
 // ============================================================
+=======
+>>>>>>> origin/dev
 // LOGOUT
-// ============================================================
 
 export function logout() {
   clearTokens();
 }
 
+// DEFAULT EXPORT
 
 export default api;

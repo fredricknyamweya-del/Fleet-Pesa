@@ -29,7 +29,9 @@ export default function LoginPage() {
     location.state?.success || ""
   );
 
-  // Clear success message after 5 seconds
+
+  // SUCCESS MESSAGE
+
   useEffect(() => {
     if (!success) return undefined;
 
@@ -40,7 +42,7 @@ export default function LoginPage() {
     return () => window.clearTimeout(timeoutId);
   }, [success]);
 
-  // Clear navigation state after reading it
+  // Remove navigation state after reading it
   useEffect(() => {
     if (location.state?.success) {
       navigate(location.pathname, {
@@ -50,28 +52,37 @@ export default function LoginPage() {
     }
   }, [location, navigate]);
 
+  // VALIDATION
+
   const validate = () => {
     const cleanPhone = normalizePhone(phone);
 
-    if (!/^07\d{8}$/.test(cleanPhone)) {
-      return "Phone number must be 10 digits in the format 0701234567";
+    if (!/^(07|01)\d{8}$/.test(cleanPhone)) {
+         return "Phone number must be 10 digits and start with 07 or 01.";
     }
+
 
     if (!password) {
       return "Please enter your password";
     }
 
-    if (!/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password)) {
-      return "Password must be at least 6 characters and include letters, numbers, and special characters.";
+    if (
+      !/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/.test(password)
+    ) {
+      return "Password must be at least 8 characters and include letters, numbers, and special characters.";
     }
 
     return "";
   };
 
+  // ROLE
+
   const handleRoleChange = (newRole) => {
     setRole(newRole);
     setError("");
   };
+
+  // LOGIN
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -91,79 +102,52 @@ export default function LoginPage() {
     const cleanPhone = normalizePhone(phone);
 
     try {
+      
       const response = await login({
-        role,
         phone: cleanPhone,
         password,
+        role,
       });
 
-      /*
-       * Support multiple possible API response formats:
-       *
-       * {
-       *   token,
-       *   user
-       * }
-       *
-       * or:
-       *
-       * {
-       *   access_token,
-       *   user
-       * }
-       *
-       * or:
-       *
-       * {
-       *   data: {
-       *     token,
-       *     user
-       *   }
-       * }
-       */
+      console.log("Login response:", response);
 
-      const token =
-        response?.token ||
-        response?.access_token ||
-        response?.data?.token ||
-        response?.data?.access_token;
+      
 
-      const user =
-        response?.user ||
-        response?.data?.user ||
+      const token = response?.access_token || response?.token ||
+        response?.data?.access_token || response?.data?.token;
+
+      const user = response?.user || response?.data?.user ||
         null;
 
       if (!token) {
-        throw new Error(
-          "Login succeeded but no authentication token was returned."
-        );
+        throw new Error("Login succeeded but the backend did not return an authentication token.");
       }
 
-      const authenticatedUser = user || {
-        phone: cleanPhone,
-        role,
-      };
-
-      setAuth({
-        token,
-        user: authenticatedUser,
+      
+      setAuth({token,
+        user:
+          user || {
+            phone: cleanPhone,
+            role,
+          },
       });
 
-      const destination =
-        role === "driver"
-          ? "/driver/remittance"
-          : "/owner/dashboard";
+      // REDIRECT
 
-      navigate(destination, {
-        replace: true,
-      });
+      if (role === "driver") {
+        navigate("/driver/remittance", {
+          replace: true,
+        });
+      } else {
+        navigate("/owner/dashboard", {
+          replace: true,
+        });
+      }
     } catch (err) {
       console.error("Login error:", err);
 
-      const message =
-        err?.response?.data?.message ||
-        err?.response?.data?.error ||
-        err?.message ||
+      
+      const message = err?.response?.data?.message || err?.response?.data?.error || err?.message ||
         "Sign in failed. Check your details and try again.";
 
       setError(message);
@@ -172,13 +156,20 @@ export default function LoginPage() {
     }
   };
 
+  // UI
+
   return (
     <div
       className={`login-page min-h-screen w-full flex flex-col items-center justify-center px-4 py-12 ${
-        isDark ? "login-page-dark" : "login-page-light"
+        isDark
+          ? "login-page-dark"
+          : "login-page-light"
       }`}
     >
-      {/* Logo */}
+      {/* ======================================================
+          LOGO
+      ====================================================== */}
+
       <div
         className={`login-logo-frame mb-8 rounded-[22px] p-1.5 shadow-[0_6px_16px_rgba(16,40,68,0.08)] ring-1 ${
           isDark
@@ -197,7 +188,10 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* Login Card */}
+      {/* ======================================================
+          LOGIN CARD
+      ====================================================== */}
+
       <div
         className={`login-card w-full max-w-md rounded-2xl p-8 ${
           isDark
@@ -205,11 +199,16 @@ export default function LoginPage() {
             : "bg-white"
         }`}
       >
-        {/* Heading */}
+        {/* ====================================================
+            HEADING
+        ==================================================== */}
+
         <div className="text-center">
           <h1
             className={`mb-1 text-2xl font-bold ${
-              isDark ? "text-white" : "text-slate-900"
+              isDark
+                ? "text-white"
+                : "text-slate-900"
             }`}
           >
             Welcome back
@@ -217,7 +216,9 @@ export default function LoginPage() {
 
           <p
             className={`mb-6 ${
-              isDark ? "text-slate-400" : "text-slate-500"
+              isDark
+                ? "text-slate-400"
+                : "text-slate-500"
             }`}
           >
             {role === "driver"
@@ -226,7 +227,10 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Success Message */}
+        {/* ====================================================
+            SUCCESS MESSAGE
+        ==================================================== */}
+
         {success && (
           <div
             className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
@@ -240,10 +244,15 @@ export default function LoginPage() {
           </div>
         )}
 
-        {/* Role Selector */}
+        {/* ====================================================
+            ROLE SELECTOR
+        ==================================================== */}
+
         <div
           className={`mb-6 flex rounded-lg p-1 ${
-            isDark ? "bg-slate-800" : "bg-slate-100"
+            isDark
+              ? "bg-slate-800"
+              : "bg-slate-100"
           }`}
           role="tablist"
           aria-label="Account type"
@@ -254,7 +263,9 @@ export default function LoginPage() {
             aria-selected={role === "owner"}
             onClick={() => handleRoleChange("owner")}
             className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
-              role === "owner" ? "selected" : ""
+              role === "owner"
+                ? "selected"
+                : ""
             }`}
           >
             Fleet Owner
@@ -266,21 +277,31 @@ export default function LoginPage() {
             aria-selected={role === "driver"}
             onClick={() => handleRoleChange("driver")}
             className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
-              role === "driver" ? "selected" : ""
+              role === "driver"
+                ? "selected"
+                : ""
             }`}
           >
             Driver
           </button>
         </div>
 
-        {/* Form */}
+        {/* ====================================================
+            FORM
+        ==================================================== */}
+
         <form onSubmit={handleSubmit} noValidate>
-          {/* Phone */}
+          {/* ==================================================
+              PHONE
+          ================================================== */}
+
           <div className="mb-4">
             <label
               htmlFor="phone"
               className={`mb-1.5 block text-xs font-semibold tracking-wide uppercase ${
-                isDark ? "text-slate-400" : "text-slate-500"
+                isDark
+                  ? "text-slate-400"
+                  : "text-slate-500"
               }`}
             >
               Phone Number
@@ -307,12 +328,17 @@ export default function LoginPage() {
             />
           </div>
 
-          {/* Password */}
+          {/* ==================================================
+              PASSWORD
+          ================================================== */}
+
           <div className="mb-2">
             <label
               htmlFor="password"
               className={`mb-1.5 block text-xs font-semibold tracking-wide uppercase ${
-                isDark ? "text-slate-400" : "text-slate-500"
+                isDark
+                  ? "text-slate-400"
+                  : "text-slate-500"
               }`}
             >
               Password
@@ -322,7 +348,11 @@ export default function LoginPage() {
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => {
@@ -340,7 +370,11 @@ export default function LoginPage() {
 
               <button
                 type="button"
-                onClick={() => setShowPassword((current) => !current)}
+                onClick={() =>
+                  setShowPassword(
+                    (current) => !current
+                  )
+                }
                 disabled={loading}
                 className={`absolute inset-y-0 right-0 flex items-center pr-3 transition-colors disabled:opacity-50 ${
                   isDark
@@ -348,7 +382,9 @@ export default function LoginPage() {
                     : "text-slate-400 hover:text-slate-600"
                 }`}
                 aria-label={
-                  showPassword ? "Hide password" : "Show password"
+                  showPassword
+                    ? "Hide password"
+                    : "Show password"
                 }
               >
                 {showPassword ? (
@@ -360,7 +396,10 @@ export default function LoginPage() {
             </div>
           </div>
 
-          {/* Forgot Password */}
+          {/* ==================================================
+              FORGOT PASSWORD
+          ================================================== */}
+
           <button
             type="button"
             className={`forgot-password text-sm font-medium transition-colors ${
@@ -368,12 +407,17 @@ export default function LoginPage() {
                 ? "text-slate-400 hover:text-white"
                 : "text-slate-500 hover:text-slate-900"
             }`}
-            onClick={() => navigate("/forgot-password")}
+            onClick={() =>
+              navigate("/forgot-password")
+            }
           >
             Forgot password?
           </button>
 
-          {/* Error */}
+          {/* ==================================================
+              ERROR
+          ================================================== */}
+
           {error && (
             <div
               className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
@@ -387,7 +431,10 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Submit */}
+          {/* ==================================================
+              SUBMIT
+          ================================================== */}
+
           <button
             type="submit"
             disabled={loading}
@@ -397,15 +444,25 @@ export default function LoginPage() {
               <Loader2 className="h-4 w-4 animate-spin" />
             )}
 
-            {loading ? "Signing in..." : "Sign In"}
+            {loading
+              ? "Signing in..."
+              : "Sign In"}
           </button>
 
-          {/* Trust Line */}
+          {/* ==================================================
+              TRUST LINE
+          ================================================== */}
+
           <div
             className={`trust-line mt-4 flex items-center justify-center gap-2 text-center text-sm font-medium ${
-              isDark ? "text-slate-300" : "text-slate-900"
+              isDark
+                ? "text-slate-300"
+                : "text-slate-900"
             }`}
-            style={{ fontFamily: "Inter, sans-serif" }}
+            style={{
+              fontFamily:
+                "Inter, sans-serif",
+            }}
           >
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
@@ -427,7 +484,9 @@ export default function LoginPage() {
               Secure
             </span>
 
-            <span aria-hidden="true">•</span>
+            <span aria-hidden="true">
+              •
+            </span>
 
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
@@ -449,7 +508,9 @@ export default function LoginPage() {
               Instant M-Pesa
             </span>
 
-            <span aria-hidden="true">•</span>
+            <span aria-hidden="true">
+              •
+            </span>
 
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
@@ -473,18 +534,27 @@ export default function LoginPage() {
           </div>
         </form>
 
-        {/* Sign Up */}
+        {/* ====================================================
+            SIGN UP
+        ==================================================== */}
+
         <p
           className={`mt-6 text-center text-sm ${
-            isDark ? "text-slate-400" : "text-slate-500"
+            isDark
+              ? "text-slate-400"
+              : "text-slate-500"
           }`}
         >
           No account yet?{" "}
           <button
             type="button"
-            onClick={() => navigate("/signup")}
+            onClick={() =>
+              navigate("/signup")
+            }
             className={`font-semibold hover:underline ${
-              isDark ? "text-white" : "text-slate-900"
+              isDark
+                ? "text-white"
+                : "text-slate-900"
             }`}
           >
             Sign up
@@ -494,3 +564,5 @@ export default function LoginPage() {
     </div>
   );
 }
+
+

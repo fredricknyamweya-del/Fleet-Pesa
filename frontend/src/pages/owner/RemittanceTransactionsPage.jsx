@@ -35,6 +35,22 @@ function formatTime(value) {
   }).format(date);
 }
 
+function formatDateStamp(value) {
+  if (!value) return "";
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  return new Intl.DateTimeFormat("en-KE", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
 
 
 export default function RemittanceTransactionsPage() {
@@ -158,6 +174,10 @@ export default function RemittanceTransactionsPage() {
                 item?.time ||
                 formatTime(item?.created_at);
 
+              const dateStamp =
+                item?.date ||
+                formatDateStamp(item?.created_at);
+
               return (
                 <article
                   key={item.id}
@@ -192,8 +212,13 @@ export default function RemittanceTransactionsPage() {
 
                       
 
-                      <span className="shrink-0 text-xs text-slate-400">
-                        {time}
+                      <span className="shrink-0 text-right text-[11px] text-slate-400">
+                        {dateStamp && (
+                          <span className="block font-medium text-slate-500">
+                            {dateStamp}
+                          </span>
+                        )}
+                        {time && <span className="block">{time}</span>}
                       </span>
 
                     </div>

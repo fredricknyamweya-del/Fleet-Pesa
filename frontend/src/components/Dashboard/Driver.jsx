@@ -1,3 +1,712 @@
+// import { useEffect, useMemo, useState } from "react";
+// import { useLocation, useNavigate } from "react-router-dom";
+// import {
+//   Bell,
+//   Moon,
+//   Phone,
+//   Settings,
+//   Sun,
+//   X,
+// } from "lucide-react";
+
+// import { useAuth } from "../../context/AuthContext.jsx";
+// import { useTheme } from "../../context/ThemeContext.jsx";
+// import { MOCK_VEHICLES } from "../../data/mockVehicles.js";
+
+// import StatusBadge from "../shared/StatusBadge.jsx";
+// import { StatCard } from "../shared/StatCard";
+// import Avatar from "../shared/Avatar.jsx";
+// import AlertBanner from "../shared/AlertBanner.jsx";
+
+// import FarePaymentModal from "../../features/paymentPrompt/FarePaymentModal.jsx";
+// import DriverPaymentNotifications from "../../components/notifications/DriverPaymentNotifications.jsx";
+
+// export default function Driver() {
+//   const location = useLocation();
+//   const navigate = useNavigate();
+
+//   const { user, logout } = useAuth();
+//   const { isDark, toggleTheme } = useTheme();
+
+//   const [successMessage, setSuccessMessage] = useState(
+//     location.state?.success || ""
+//   );
+
+//   const [amount, setAmount] = useState("");
+//   const [status, setStatus] = useState("idle");
+
+//   const [paymentPhone, setPaymentPhone] = useState(
+//     user?.phone || "0712345678"
+//   );
+
+//   const [showFarePaymentModal, setShowFarePaymentModal] =
+//     useState(false);
+
+  
+//   const [showNotifications, setShowNotifications] =
+//     useState(false);
+
+//   const [notificationCount, setNotificationCount] =
+//     useState(3);
+
+//   const [vehicles, setVehicles] = useState(() => {
+//     try {
+//       const stored = localStorage.getItem("fleetpesa_mock_vehicles");
+//       return stored ? JSON.parse(stored) : MOCK_VEHICLES;
+//     } catch {
+//       return MOCK_VEHICLES;
+//     }
+//   });
+//   const [startedVehicleId, setStartedVehicleId] = useState(() => {
+//     try {
+//       const stored = JSON.parse(
+//         localStorage.getItem("fleetpesa_driver_day_start") || "null",
+//       );
+//       return stored?.date === new Date().toISOString().slice(0, 10)
+//         ? stored.vehicleId
+//         : "";
+//     } catch {
+//       return "";
+//     }
+//   });
+
+//   const quickAmounts = [1500, 3000, 4500];
+
+//   const assignedVehicles = useMemo(() => {
+//     const driverName = user?.name || "Peter Omondi";
+//     return vehicles.filter((vehicle) => vehicle.driver_name === driverName);
+//   }, [user?.name, vehicles]);
+
+//   const startedVehicle = assignedVehicles.find(
+//     (vehicle) => vehicle.id === startedVehicleId,
+//   ) || assignedVehicles[0];
+
+//   function handleActivateVehicle() {
+//     if (!startedVehicle || startedVehicle.status !== "parked") {
+//       return;
+//     }
+
+//     const activatedVehicle = {
+//       ...startedVehicle,
+//       status: "active",
+//     };
+//     const updatedVehicles = vehicles.map((vehicle) =>
+//       vehicle.id === activatedVehicle.id ? activatedVehicle : vehicle,
+//     );
+
+//     setVehicles(updatedVehicles);
+//     localStorage.setItem(
+//       "fleetpesa_mock_vehicles",
+//       JSON.stringify(updatedVehicles),
+//     );
+//     localStorage.setItem(
+//       "fleetpesa_driver_day_start",
+//       JSON.stringify({
+//         date: new Date().toISOString().slice(0, 10),
+//         vehicleId: activatedVehicle.id,
+//         driverName: user?.name || "Peter Omondi",
+//       }),
+//     );
+//   }
+
+//   useEffect(() => {
+//     if (!successMessage) {
+//       return undefined;
+//     }
+
+//     const timeoutId = window.setTimeout(() => {
+//       setSuccessMessage("");
+//     }, 5000);
+
+//     return () => window.clearTimeout(timeoutId);
+//   }, [successMessage]);
+
+//   function handleAmountChange(event) {
+//     const newAmount = event.target.value.replace(/\D/g, "");
+//     setAmount(newAmount);
+//   }
+
+//   function handleQuickSelect(value) {
+//     setAmount(String(value));
+//   }
+
+//   const isAmountValid =
+//     /^\d+$/.test(amount) && Number(amount) > 0;
+
+//   function handleSubmit() {
+//     const cleanPhone = paymentPhone.replace(/\s/g, "");
+
+//     if (!/^07\d{8}$/.test(cleanPhone)) {
+//       return;
+//     }
+
+//     setStatus("processing");
+
+//     console.log(
+//       "Submitting daily remittance:",
+//       amount,
+//       "to:",
+//       cleanPhone
+//     );
+
+    
+//     window.setTimeout(() => {
+//       setStatus("success");
+//     }, 1500);
+//   }
+
+//   function handleSubmitAnother() {
+//     setAmount("");
+//     setStatus("idle");
+//   }
+
+//   function handleSignOut() {
+//     logout();
+
+//     navigate("/login", {
+//       replace: true,
+//       state: {
+//         success: "Successfully signed out.",
+//       },
+//     });
+//   }
+
+//   function handleNotificationClick() {
+//     setShowNotifications((current) => !current);
+
+    
+//     setNotificationCount(0);
+//   }
+
+  
+
+//   if (status === "success") {
+//     return (
+//       <main className="success-shell">
+//         <section
+//           className="success-card"
+//           aria-labelledby="success-title"
+//         >
+//           <div
+//             className="success-icon"
+//             aria-hidden="true"
+//           >
+//             ✓
+//           </div>
+
+//           <h1
+//             className="success-title"
+//             id="success-title"
+//           >
+//             Payment Received!
+//           </h1>
+
+//           <p className="success-copy">
+//             Successfully remitted to owner
+//           </p>
+
+//           <p className="success-amount">
+//             KES {Number(amount).toLocaleString("en-KE")}
+//           </p>
+
+//           <div className="receipt-details">
+//             <div className="receipt-row">
+//               <span>Reference</span>
+//               <strong>FP-2026-001847</strong>
+//             </div>
+
+//             <div className="receipt-row">
+//               <span>M-Pesa Code</span>
+//               <strong>QHF72JK48N</strong>
+//             </div>
+
+//             <div className="receipt-row">
+//               <span>Payment Number</span>
+//               <strong>{paymentPhone}</strong>
+//             </div>
+
+//             <div className="receipt-row">
+//               <span>Vehicle</span>
+//               <strong>KDJ 421A</strong>
+//             </div>
+
+//             <div className="receipt-row">
+//               <span>Recipient</span>
+//               <strong>FleetPesa Owner</strong>
+//             </div>
+//           </div>
+
+//           <button
+//             className="submit-another-button"
+//             type="button"
+//             onClick={handleSubmitAnother}
+//           >
+//             Submit Another
+//           </button>
+//         </section>
+//       </main>
+//     );
+//   }
+
+  
+
+//   return (
+//     <div className="driver-page">
+
+      
+
+//       {successMessage && (
+//         <p
+//           className="auth-success"
+//           role="status"
+//         >
+//           {successMessage}
+//         </p>
+//       )}
+
+      
+
+//       <header className="driver-header">
+//         <div className="driver-header-inner">
+
+         
+
+//           <div className="driver-brand-row">
+
+            
+
+//             <div className="driver-brand">
+//               <img
+//                 className="brand-logo driver-brand-logo"
+//                 src="/FleetPesa%20FavIcon.jpg"
+//                 alt="FleetPesa"
+//               />
+//             </div>
+
+            
+
+//             <div className="driver-actions">
+
+              
+
+//               <button
+//                 className="driver-theme-toggle"
+//                 type="button"
+//                 onClick={toggleTheme}
+//                 aria-label={`Switch to ${
+//                   isDark ? "light" : "dark"
+//                 } mode`}
+//                 title={`Switch to ${
+//                   isDark ? "light" : "dark"
+//                 } mode`}
+//               >
+//                 {isDark ? (
+//                   <Sun size={16} />
+//                 ) : (
+//                   <Moon size={16} />
+//                 )}
+//               </button>
+
+
+              
+
+//               <button
+//                 type="button"
+//                 onClick={handleNotificationClick}
+//                 className="driver-notification-trigger relative flex h-10 w-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-[#0F2440] shadow-sm transition hover:bg-slate-50"
+//                 aria-label="Open notifications"
+//                 title="Notifications"
+//               >
+//                 <Bell size={19} />
+
+//                 {notificationCount > 0 && (
+//                   <span
+//                     className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+//                   >
+//                     {notificationCount > 9
+//                       ? "9+"
+//                       : notificationCount}
+//                   </span>
+//                 )}
+//               </button>
+
+
+              
+
+//               <button
+//                 className="driver-theme-toggle"
+//                 type="button"
+//                 onClick={() => navigate("/driver/settings")}
+//                 aria-label="Open settings"
+//                 title="Settings"
+//               >
+//                 <Settings size={16} />
+//               </button>
+
+//             </div>
+//           </div>
+
+
+          
+
+//           {showNotifications && (
+//             <div className="relative z-50">
+
+//               <div className="absolute right-0 top-3 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+
+                
+
+//                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+
+//                   <div>
+//                     <p className="text-xs font-semibold uppercase tracking-wide text-[#16A34A]">
+//                       Driver
+//                     </p>
+
+//                     <h2 className="text-lg font-bold text-[#0F2440]">
+//                       Notifications
+//                     </h2>
+//                   </div>
+
+//                   <button
+//                     type="button"
+//                     onClick={() =>
+//                       setShowNotifications(false)
+//                     }
+//                     className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+//                     aria-label="Close notifications"
+//                   >
+//                     <X size={18} />
+//                   </button>
+
+//                 </div>
+
+
+               
+
+//                 <div className="max-h-[480px] overflow-y-auto">
+
+//                   <DriverPaymentNotifications />
+
+//                 </div>
+
+
+                
+
+//                 <div className="border-t border-slate-100 p-3">
+
+//                   <button
+//                     type="button"
+//                     onClick={() => {
+//                       setShowNotifications(false);
+//                       navigate("/driver/notifications");
+//                     }}
+//                     className="w-full rounded-xl bg-[#0F2440] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#1E3A5F]"
+//                   >
+//                     View all notifications
+//                   </button>
+
+//                 </div>
+
+//               </div>
+
+//             </div>
+//           )}
+
+//         </div>
+
+
+        
+
+//         <div className="driver-profile">
+
+//           <p className="driver-label">
+//             Daily remittance for
+//           </p>
+
+//           <div className="driver-profile-row">
+
+//             <Avatar
+//               name={user?.name || "Peter Omondi"}
+//               image={user?.profile_picture}
+//             />
+
+//             <div>
+
+//               <h1 className="driver-name">
+//                 {user?.name || "Peter Omondi"}
+//               </h1>
+
+//               <p className="driver-vehicle">
+//                 KDJ 421A · Toyota Hiace
+//               </p>
+
+//             </div>
+
+//           </div>
+
+//         </div>
+
+//       </header>
+
+
+      
+
+//       <main className="driver-content">
+
+       
+
+//         <AlertBanner
+//           title="Remittance shortfall"
+//           message="You have KES 1500 remaining for today's target."
+//           type="warning"
+//         />
+
+
+        
+
+//         <section className="driver-start-card" aria-labelledby="start-day-title">
+//           <div>
+//             <p className="driver-label" id="start-day-title">
+//               {startedVehicle?.status === "parked"
+//                 ? "Vehicle selected"
+//                 : "Vehicle started today"}
+//             </p>
+//             <p className="driver-start-copy">
+//               {startedVehicle
+//                 ? `${startedVehicle.plate_number} · ${startedVehicle.type}${startedVehicle.status === "parked" ? " · Parked" : ""}`
+//                 : "Log the vehicle you started the day with."}
+//             </p>
+//           </div>
+
+//           {startedVehicle?.status === "parked" && (
+//             <button
+//               className="driver-activate-button"
+//               type="button"
+//               onClick={handleActivateVehicle}
+//             >
+//               Activate vehicle
+//             </button>
+//           )}
+//         </section>
+
+//         <section className="amount-card">
+
+//           <label
+//             className="driver-label"
+//             htmlFor="amount"
+//           >
+//             Amount to submit
+//           </label>
+
+//           <div className="amount-input-row">
+
+//             <span className="currency-prefix">
+//               KES
+//             </span>
+
+//             <input
+//               className="amount-input"
+//               id="amount"
+//               type="number"
+//               min="1"
+//               step="1"
+//               inputMode="numeric"
+//               value={amount}
+//               onChange={handleAmountChange}
+//               placeholder="0"
+//               aria-describedby="amount-help"
+//             />
+
+//           </div>
+
+
+//           <div className="expected-row">
+
+//             <span>
+//               Expected today
+//             </span>
+
+//             <strong className="expected-amount">
+//               KES 4,500
+//             </strong>
+
+//           </div>
+
+
+//           <p
+//             className="amount-help"
+//             id="amount-help"
+//           >
+//             Enter the amount you are remitting to the
+//             owner in Kenyan shillings.
+//           </p>
+
+
+//           <StatCard
+//             label="Expected today"
+//             value="KES 4500"
+//           />
+
+//         </section>
+
+
+        
+
+//         <section
+//           className="quick-section"
+//           aria-labelledby="quick-select-title"
+//         >
+
+//           <h2
+//             className="driver-label"
+//             id="quick-select-title"
+//           >
+//             Quick select
+//           </h2>
+
+//           <div className="quick-grid">
+
+//             {quickAmounts.map((value) => (
+//               <button
+//                 className={`quick-button ${
+//                   Number(amount) === value
+//                     ? "quick-button-active"
+//                     : ""
+//                 }`}
+//                 key={value}
+//                 type="button"
+//                 aria-pressed={
+//                   Number(amount) === value
+//                 }
+//                 onClick={() =>
+//                   handleQuickSelect(value)
+//                 }
+//               >
+//                 {value.toLocaleString("en-KE")}
+//               </button>
+//             ))}
+
+//           </div>
+
+//         </section>
+
+
+        
+
+//         <section
+//           className="payment-card"
+//           aria-label="Payment method"
+//         >
+
+//           <div className="payment-details">
+
+//             <span
+//               className="payment-icon"
+//               aria-hidden="true"
+//             >
+//               <Phone
+//                 size={18}
+//                 strokeWidth={2}
+//               />
+//             </span>
+
+//             <div>
+
+//               <h2 className="payment-name">
+//                 M-Pesa
+//               </h2>
+
+//               <label
+//                 className="payment-phone-label"
+//                 htmlFor="payment-phone"
+//               >
+//                 Payment number
+//               </label>
+
+//               <input
+//                 className="payment-phone-input"
+//                 id="payment-phone"
+//                 type="tel"
+//                 inputMode="tel"
+//                 value={paymentPhone}
+//                 onChange={(event) =>
+//                   setPaymentPhone(
+//                     event.target.value
+//                   )
+//                 }
+//                 aria-label="M-Pesa payment number"
+//               />
+
+//             </div>
+
+//           </div>
+
+//           <StatusBadge status="Ready" />
+
+//         </section>
+
+
+        
+
+//         <button
+//           className={`submit-button ${
+//             status === "processing"
+//               ? "submit-button-processing"
+//               : ""
+//           }`}
+//           type="button"
+//           onClick={handleSubmit}
+//           disabled={
+//             !isAmountValid ||
+//             !/^07\d{8}$/.test(
+//               paymentPhone.replace(/\s/g, "")
+//             ) ||
+//             status === "processing"
+//           }
+//         >
+//           {status === "processing"
+//             ? "Processing..."
+//             : isAmountValid
+//               ? `Submit KES ${Number(
+//                   amount
+//                 ).toLocaleString("en-KE")}`
+//               : "Enter an amount"}
+//         </button>
+
+
+        
+
+//         <button
+//           className="w-full rounded-2xl border-0 bg-[#16A34A] px-5 py-4 text-base font-bold text-white transition hover:bg-[#15803D] focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
+//           type="button"
+//           onClick={() =>
+//             setShowFarePaymentModal(true)
+//           }
+//         >
+//           Prompt Fare Payment
+//         </button>
+
+//       </main>
+
+
+      
+
+//       {showFarePaymentModal && (
+//         <FarePaymentModal
+//           onClose={() =>
+//             setShowFarePaymentModal(false)
+//           }
+//         />
+//       )}
+
+//     </div>
+//   );
+// }
+
+
+
+
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -9,9 +718,13 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  api,
+  getAccessToken,
+} from "../../lib/api.js";
+
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTheme } from "../../context/ThemeContext.jsx";
-import { MOCK_VEHICLES } from "../../data/mockVehicles.js";
 
 import StatusBadge from "../shared/StatusBadge.jsx";
 import { StatCard } from "../shared/StatCard";
@@ -34,80 +747,99 @@ export default function Driver() {
 
   const [amount, setAmount] = useState("");
   const [status, setStatus] = useState("idle");
+  const [error, setError] = useState("");
 
   const [paymentPhone, setPaymentPhone] = useState(
-    user?.phone || "0712345678"
+    user?.phone || ""
   );
 
   const [showFarePaymentModal, setShowFarePaymentModal] =
     useState(false);
 
-  
   const [showNotifications, setShowNotifications] =
     useState(false);
 
   const [notificationCount, setNotificationCount] =
-    useState(3);
+    useState(0);
 
-  const [vehicles, setVehicles] = useState(() => {
-    try {
-      const stored = localStorage.getItem("fleetpesa_mock_vehicles");
-      return stored ? JSON.parse(stored) : MOCK_VEHICLES;
-    } catch {
-      return MOCK_VEHICLES;
-    }
-  });
-  const [startedVehicleId, setStartedVehicleId] = useState(() => {
-    try {
-      const stored = JSON.parse(
-        localStorage.getItem("fleetpesa_driver_day_start") || "null",
-      );
-      return stored?.date === new Date().toISOString().slice(0, 10)
-        ? stored.vehicleId
-        : "";
-    } catch {
-      return "";
-    }
-  });
+  const [vehicles, setVehicles] = useState([]);
+  const [vehiclesLoading, setVehiclesLoading] = useState(true);
+
+  const [startedVehicleId, setStartedVehicleId] = useState(null);
 
   const quickAmounts = [1500, 3000, 4500];
 
-  const assignedVehicles = useMemo(() => {
-    const driverName = user?.name || "Peter Omondi";
-    return vehicles.filter((vehicle) => vehicle.driver_name === driverName);
-  }, [user?.name, vehicles]);
+  /*
+   * ============================================================
+   * LOAD VEHICLES FROM FLASK BACKEND
+   * GET /vehicles
+   * ============================================================
+   */
 
-  const startedVehicle = assignedVehicles.find(
-    (vehicle) => vehicle.id === startedVehicleId,
-  ) || assignedVehicles[0];
+  useEffect(() => {
+    let mounted = true;
 
-  function handleActivateVehicle() {
-    if (!startedVehicle || startedVehicle.status !== "parked") {
-      return;
+    async function loadVehicles() {
+      try {
+        setVehiclesLoading(true);
+        setError("");
+
+        const response = await api.get("/vehicles");
+
+        if (!mounted) return;
+
+        /*
+         * We support the common response shapes without
+         * changing the backend contract.
+         */
+        const vehicleData =
+          Array.isArray(response.data)
+            ? response.data
+            : Array.isArray(response.data?.vehicles)
+              ? response.data.vehicles
+              : Array.isArray(response.data?.data)
+                ? response.data.data
+                : [];
+
+        setVehicles(vehicleData);
+      } catch (err) {
+        if (!mounted) return;
+
+        console.error("Failed to load vehicles:", err);
+
+        const message =
+          err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Unable to load vehicles.";
+
+        setError(message);
+      } finally {
+        if (mounted) {
+          setVehiclesLoading(false);
+        }
+      }
     }
 
-    const activatedVehicle = {
-      ...startedVehicle,
-      status: "active",
-    };
-    const updatedVehicles = vehicles.map((vehicle) =>
-      vehicle.id === activatedVehicle.id ? activatedVehicle : vehicle,
-    );
+    /*
+     * Only load if we have an authentication token.
+     */
+    if (getAccessToken()) {
+      loadVehicles();
+    } else {
+      setVehiclesLoading(false);
+    }
 
-    setVehicles(updatedVehicles);
-    localStorage.setItem(
-      "fleetpesa_mock_vehicles",
-      JSON.stringify(updatedVehicles),
-    );
-    localStorage.setItem(
-      "fleetpesa_driver_day_start",
-      JSON.stringify({
-        date: new Date().toISOString().slice(0, 10),
-        vehicleId: activatedVehicle.id,
-        driverName: user?.name || "Peter Omondi",
-      }),
-    );
-  }
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /*
+   * ============================================================
+   * SUCCESS MESSAGE
+   * ============================================================
+   */
 
   useEffect(() => {
     if (!successMessage) {
@@ -121,44 +853,211 @@ export default function Driver() {
     return () => window.clearTimeout(timeoutId);
   }, [successMessage]);
 
+  /*
+   * ============================================================
+   * CLEAR ROUTER SUCCESS STATE
+   * ============================================================
+   */
+
+  useEffect(() => {
+    if (location.state?.success) {
+      navigate(location.pathname, {
+        replace: true,
+        state: {},
+      });
+    }
+  }, [location, navigate]);
+
+  /*
+   * ============================================================
+   * FIND DRIVER'S ASSIGNED VEHICLES
+   * ============================================================
+   *
+   * This uses the fields your existing frontend was already
+   * expecting: driver_name, id, status, plate_number, type.
+   *
+   * If your Flask Vehicle model returns different field names,
+   * send me vehicle_routes.py and the Vehicle model and I will
+   * map them exactly.
+   */
+
+  const assignedVehicles = useMemo(() => {
+    if (!user || !vehicles.length) {
+      return [];
+    }
+
+    const driverName = user?.name;
+
+    return vehicles.filter(
+      (vehicle) =>
+        vehicle?.driver_name &&
+        driverName &&
+        vehicle.driver_name === driverName
+    );
+  }, [user, vehicles]);
+
+  /*
+   * ============================================================
+   * STARTED VEHICLE
+   * ============================================================
+   */
+
+  const startedVehicle = useMemo(() => {
+    if (!assignedVehicles.length) {
+      return null;
+    }
+
+    if (startedVehicleId) {
+      return (
+        assignedVehicles.find(
+          (vehicle) => vehicle.id === startedVehicleId
+        ) || assignedVehicles[0]
+      );
+    }
+
+    return assignedVehicles[0];
+  }, [assignedVehicles, startedVehicleId]);
+
+  /*
+   * ============================================================
+   * AMOUNT
+   * ============================================================
+   */
+
   function handleAmountChange(event) {
     const newAmount = event.target.value.replace(/\D/g, "");
+
     setAmount(newAmount);
+    setError("");
   }
 
   function handleQuickSelect(value) {
     setAmount(String(value));
+    setError("");
   }
 
   const isAmountValid =
     /^\d+$/.test(amount) && Number(amount) > 0;
 
-  function handleSubmit() {
+  /*
+   * ============================================================
+   * VEHICLE ACTIVATION
+   * ============================================================
+   *
+   * IMPORTANT:
+   * Your app.py does NOT show a backend endpoint for activating
+   * a vehicle.
+   *
+   * Therefore this does NOT pretend there is one.
+   *
+   * We only select the vehicle locally for the current session.
+   */
+
+  function handleActivateVehicle() {
+    if (!startedVehicle) {
+      return;
+    }
+
+    setStartedVehicleId(startedVehicle.id);
+
+    setVehicles((currentVehicles) =>
+      currentVehicles.map((vehicle) =>
+        vehicle.id === startedVehicle.id
+          ? {
+              ...vehicle,
+              status: "active",
+            }
+          : vehicle
+      )
+    );
+  }
+
+  /*
+   * ============================================================
+   * REMITTANCE
+   * ============================================================
+   *
+   * Your Flask backend exposes:
+   *
+   * /remittances
+   * /remittances/<remittance_id>
+   * /remittances/<remittance_id>/prompt
+   *
+   * But app.py alone does not tell us the POST payload required
+   * by RemittanceList.
+   *
+   * Therefore the actual daily-remittance submission should not
+   * be guessed here.
+   *
+   * For now we show a clear error instead of silently pretending
+   * the payment succeeded.
+   */
+
+  async function handleSubmit() {
     const cleanPhone = paymentPhone.replace(/\s/g, "");
 
+    setError("");
+
+    if (!isAmountValid) {
+      setError("Please enter a valid remittance amount.");
+      return;
+    }
+
     if (!/^07\d{8}$/.test(cleanPhone)) {
+      setError(
+        "Phone number must be 10 digits in the format 0701234567."
+      );
+      return;
+    }
+
+    if (!startedVehicle) {
+      setError("No vehicle is currently assigned to you.");
       return;
     }
 
     setStatus("processing");
 
-    console.log(
-      "Submitting daily remittance:",
-      amount,
-      "to:",
-      cleanPhone
-    );
+    try {
+      /*
+       * Do NOT fake a successful payment.
+       *
+       * The exact RemittanceList POST contract is needed before
+       * we can safely send this request.
+       */
+      throw new Error(
+        "Remittance API payload is not yet connected. Send remittance_routes.py so this request can be connected exactly to the Flask backend."
+      );
+    } catch (err) {
+      console.error("Remittance error:", err);
 
-    
-    window.setTimeout(() => {
-      setStatus("success");
-    }, 1500);
+      setError(
+        err?.response?.data?.message ||
+          err?.response?.data?.error ||
+          err?.message ||
+          "Unable to submit remittance."
+      );
+
+      setStatus("idle");
+    }
   }
+
+  /*
+   * ============================================================
+   * SUBMIT ANOTHER
+   * ============================================================
+   */
 
   function handleSubmitAnother() {
     setAmount("");
+    setError("");
     setStatus("idle");
   }
+
+  /*
+   * ============================================================
+   * LOGOUT
+   * ============================================================
+   */
 
   function handleSignOut() {
     logout();
@@ -171,14 +1070,25 @@ export default function Driver() {
     });
   }
 
+  /*
+   * ============================================================
+   * NOTIFICATIONS
+   * ============================================================
+   */
+
   function handleNotificationClick() {
     setShowNotifications((current) => !current);
-
-    
     setNotificationCount(0);
   }
 
-  
+  /*
+   * ============================================================
+   * SUCCESS RECEIPT
+   * ============================================================
+   *
+   * This will only appear after a real backend response sets
+   * status to "success".
+   */
 
   if (status === "success") {
     return (
@@ -187,17 +1097,11 @@ export default function Driver() {
           className="success-card"
           aria-labelledby="success-title"
         >
-          <div
-            className="success-icon"
-            aria-hidden="true"
-          >
+          <div className="success-icon" aria-hidden="true">
             ✓
           </div>
 
-          <h1
-            className="success-title"
-            id="success-title"
-          >
+          <h1 className="success-title" id="success-title">
             Payment Received!
           </h1>
 
@@ -212,12 +1116,9 @@ export default function Driver() {
           <div className="receipt-details">
             <div className="receipt-row">
               <span>Reference</span>
-              <strong>FP-2026-001847</strong>
-            </div>
-
-            <div className="receipt-row">
-              <span>M-Pesa Code</span>
-              <strong>QHF72JK48N</strong>
+              <strong>
+                {startedVehicle?.id || "—"}
+              </strong>
             </div>
 
             <div className="receipt-row">
@@ -227,7 +1128,9 @@ export default function Driver() {
 
             <div className="receipt-row">
               <span>Vehicle</span>
-              <strong>KDJ 421A</strong>
+              <strong>
+                {startedVehicle?.plate_number || "—"}
+              </strong>
             </div>
 
             <div className="receipt-row">
@@ -248,33 +1151,32 @@ export default function Driver() {
     );
   }
 
-  
+  /*
+   * ============================================================
+   * MAIN DRIVER PAGE
+   * ============================================================
+   */
 
   return (
     <div className="driver-page">
-
-      
-
       {successMessage && (
-        <p
-          className="auth-success"
-          role="status"
-        >
+        <p className="auth-success" role="status">
           {successMessage}
         </p>
       )}
 
-      
+      {error && (
+        <div
+          className="mx-auto mt-4 w-full max-w-5xl rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          role="alert"
+        >
+          {error}
+        </div>
+      )}
 
       <header className="driver-header">
         <div className="driver-header-inner">
-
-         
-
           <div className="driver-brand-row">
-
-            
-
             <div className="driver-brand">
               <img
                 className="brand-logo driver-brand-logo"
@@ -283,12 +1185,7 @@ export default function Driver() {
               />
             </div>
 
-            
-
             <div className="driver-actions">
-
-              
-
               <button
                 className="driver-theme-toggle"
                 type="button"
@@ -307,9 +1204,6 @@ export default function Driver() {
                 )}
               </button>
 
-
-              
-
               <button
                 type="button"
                 onClick={handleNotificationClick}
@@ -320,18 +1214,13 @@ export default function Driver() {
                 <Bell size={19} />
 
                 {notificationCount > 0 && (
-                  <span
-                    className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
-                  >
+                  <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
                     {notificationCount > 9
                       ? "9+"
                       : notificationCount}
                   </span>
                 )}
               </button>
-
-
-              
 
               <button
                 className="driver-theme-toggle"
@@ -342,22 +1231,13 @@ export default function Driver() {
               >
                 <Settings size={16} />
               </button>
-
             </div>
           </div>
 
-
-          
-
           {showNotifications && (
             <div className="relative z-50">
-
               <div className="absolute right-0 top-3 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
-
-                
-
                 <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wide text-[#16A34A]">
                       Driver
@@ -378,23 +1258,13 @@ export default function Driver() {
                   >
                     <X size={18} />
                   </button>
-
                 </div>
-
-
-               
 
                 <div className="max-h-[480px] overflow-y-auto">
-
                   <DriverPaymentNotifications />
-
                 </div>
 
-
-                
-
                 <div className="border-t border-slate-100 p-3">
-
                   <button
                     type="button"
                     onClick={() => {
@@ -405,77 +1275,72 @@ export default function Driver() {
                   >
                     View all notifications
                   </button>
-
                 </div>
-
               </div>
-
             </div>
           )}
-
         </div>
 
-
-        
-
         <div className="driver-profile">
-
           <p className="driver-label">
             Daily remittance for
           </p>
 
           <div className="driver-profile-row">
-
             <Avatar
-              name={user?.name || "Peter Omondi"}
+              name={user?.name || "Driver"}
               image={user?.profile_picture}
             />
 
             <div>
-
               <h1 className="driver-name">
-                {user?.name || "Peter Omondi"}
+                {user?.name || "Driver"}
               </h1>
 
               <p className="driver-vehicle">
-                KDJ 421A · Toyota Hiace
+                {startedVehicle?.plate_number ||
+                  "No vehicle assigned"}
+                {" · "}
+                {startedVehicle?.type || "Vehicle"}
               </p>
-
             </div>
-
           </div>
-
         </div>
-
       </header>
 
-
-      
-
       <main className="driver-content">
-
-       
-
         <AlertBanner
           title="Remittance shortfall"
           message="You have KES 1500 remaining for today's target."
           type="warning"
         />
 
-
-        
-
-        <section className="driver-start-card" aria-labelledby="start-day-title">
+        <section
+          className="driver-start-card"
+          aria-labelledby="start-day-title"
+        >
           <div>
-            <p className="driver-label" id="start-day-title">
+            <p
+              className="driver-label"
+              id="start-day-title"
+            >
               {startedVehicle?.status === "parked"
                 ? "Vehicle selected"
-                : "Vehicle started today"}
+                : "Vehicle assigned"}
             </p>
+
             <p className="driver-start-copy">
-              {startedVehicle
-                ? `${startedVehicle.plate_number} · ${startedVehicle.type}${startedVehicle.status === "parked" ? " · Parked" : ""}`
-                : "Log the vehicle you started the day with."}
+              {vehiclesLoading
+                ? "Loading vehicle..."
+                : startedVehicle
+                  ? `${startedVehicle.plate_number || "Vehicle"} · ${
+                      startedVehicle.type || "Vehicle"
+                    }${
+                      startedVehicle.status === "parked"
+                        ? " · Parked"
+                        : ""
+                    }`
+                  : "No vehicle is currently assigned to you."}
             </p>
           </div>
 
@@ -491,7 +1356,6 @@ export default function Driver() {
         </section>
 
         <section className="amount-card">
-
           <label
             className="driver-label"
             htmlFor="amount"
@@ -500,7 +1364,6 @@ export default function Driver() {
           </label>
 
           <div className="amount-input-row">
-
             <span className="currency-prefix">
               KES
             </span>
@@ -516,23 +1379,17 @@ export default function Driver() {
               onChange={handleAmountChange}
               placeholder="0"
               aria-describedby="amount-help"
+              disabled={status === "processing"}
             />
-
           </div>
 
-
           <div className="expected-row">
-
-            <span>
-              Expected today
-            </span>
+            <span>Expected today</span>
 
             <strong className="expected-amount">
               KES 4,500
             </strong>
-
           </div>
-
 
           <p
             className="amount-help"
@@ -542,22 +1399,16 @@ export default function Driver() {
             owner in Kenyan shillings.
           </p>
 
-
           <StatCard
             label="Expected today"
             value="KES 4500"
           />
-
         </section>
-
-
-        
 
         <section
           className="quick-section"
           aria-labelledby="quick-select-title"
         >
-
           <h2
             className="driver-label"
             id="quick-select-title"
@@ -566,7 +1417,6 @@ export default function Driver() {
           </h2>
 
           <div className="quick-grid">
-
             {quickAmounts.map((value) => (
               <button
                 className={`quick-button ${
@@ -582,37 +1432,27 @@ export default function Driver() {
                 onClick={() =>
                   handleQuickSelect(value)
                 }
+                disabled={status === "processing"}
               >
                 {value.toLocaleString("en-KE")}
               </button>
             ))}
-
           </div>
-
         </section>
-
-
-        
 
         <section
           className="payment-card"
           aria-label="Payment method"
         >
-
           <div className="payment-details">
-
             <span
               className="payment-icon"
               aria-hidden="true"
             >
-              <Phone
-                size={18}
-                strokeWidth={2}
-              />
+              <Phone size={18} strokeWidth={2} />
             </span>
 
             <div>
-
               <h2 className="payment-name">
                 M-Pesa
               </h2>
@@ -631,23 +1471,16 @@ export default function Driver() {
                 inputMode="tel"
                 value={paymentPhone}
                 onChange={(event) =>
-                  setPaymentPhone(
-                    event.target.value
-                  )
+                  setPaymentPhone(event.target.value)
                 }
                 aria-label="M-Pesa payment number"
+                disabled={status === "processing"}
               />
-
             </div>
-
           </div>
 
           <StatusBadge status="Ready" />
-
         </section>
-
-
-        
 
         <button
           className={`submit-button ${
@@ -662,7 +1495,8 @@ export default function Driver() {
             !/^07\d{8}$/.test(
               paymentPhone.replace(/\s/g, "")
             ) ||
-            status === "processing"
+            status === "processing" ||
+            !startedVehicle
           }
         >
           {status === "processing"
@@ -674,9 +1508,6 @@ export default function Driver() {
               : "Enter an amount"}
         </button>
 
-
-        
-
         <button
           className="w-full rounded-2xl border-0 bg-[#16A34A] px-5 py-4 text-base font-bold text-white transition hover:bg-[#15803D] focus:outline-none focus:ring-4 focus:ring-emerald-500/20"
           type="button"
@@ -686,11 +1517,7 @@ export default function Driver() {
         >
           Prompt Fare Payment
         </button>
-
       </main>
-
-
-      
 
       {showFarePaymentModal && (
         <FarePaymentModal
@@ -699,7 +1526,6 @@ export default function Driver() {
           }
         />
       )}
-
     </div>
   );
 }

@@ -83,28 +83,25 @@ class User(db.Model):
 
     @validates("phone")
     def validate_phone(self, key, value):
-        if value is None:
-            raise ValueError("Phone number is required.")
+            if value is None:
+                raise ValueError("Phone number is required.")
 
-        value = str(value).strip()
+            value = str(value).strip()
 
-        if not value:
-            raise ValueError("Phone number is required.")
+            # Remove spaces, hyphens and brackets
+            value = re.sub(r"[\s\-()]", "", value)
 
+            # Accept 07XXXXXXXX or 01XXXXXXXX
+            if not (
+                re.fullmatch(r"07\d{8}", value)
+                or re.fullmatch(r"01\d{8}", value)
+            ):
+                raise ValueError(
+                    "Phone number must start with 07 or 01 and contain 10 digits."
+                )
 
-        value = re.sub(r"[\s\-()]", "", value)
+            return value
 
-
-        if not (
-            re.fullmatch(r"07\d{8}", value)
-            or re.fullmatch(r"01\d{8}", value)
-        ):
-            raise ValueError(
-                "Phone number must start with 07 or 011."
-            )
-
-
-        return value
 
     def to_dict(self):
         return {

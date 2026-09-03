@@ -1,7 +1,6 @@
 import {
   createContext,
   useContext,
-  useEffect,
   useMemo,
   useState,
 } from "react";
@@ -9,52 +8,84 @@ import {
 const AuthContext = createContext(null);
 
 const STORAGE_KEY = "fleetpesa_auth";
+const ACCESS_TOKEN_KEY = "access_token";
+
+const EMPTY_AUTH = {
+  token: null,
+  user: null,
+};
 
 export function AuthProvider({ children }) {
   const [auth, setAuthState] = useState(() => {
     try {
       const savedAuth = localStorage.getItem(STORAGE_KEY);
+      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
-      if (!savedAuth) {
-        return {
-          token: null,
-          user: null,
-        };
-      }
-
-      return JSON.parse(savedAuth);
-    } catch (error) {
-      console.error("Failed to restore authentication:", error);
-
-      localStorage.removeItem(STORAGE_KEY);
+      const parsedAuth = savedAuth
+        ? JSON.parse(savedAuth)
+        : {};
 
       return {
-        token: null,
-        user: null,
+        token: accessToken || parsedAuth?.token || null,
+        user: parsedAuth?.user || null,
       };
+    } catch (error) {
+      console.error(
+        "Failed to restore authentication:",
+        error
+      );
+
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ACCESS_TOKEN_KEY);
+
+      return EMPTY_AUTH;
     }
   });
 
+  // Save authentication
   const setAuth = (newAuth) => {
-    setAuthState(newAuth);
+    const token = newAuth?.token || null;
+    const user = newAuth?.user || null;
+
+    const authData = {
+      token,
+      user,
+    };
+
+    setAuthState(authData);
 
     try {
+      // Store complete auth state
       localStorage.setItem(
         STORAGE_KEY,
-        JSON.stringify(newAuth)
+        JSON.stringify(authData)
       );
+
+      // Store API access token
+      if (token) {
+        localStorage.setItem(
+          ACCESS_TOKEN_KEY,
+          token
+        );
+      } else {
+        localStorage.removeItem(
+          ACCESS_TOKEN_KEY
+        );
+      }
     } catch (error) {
-      console.error("Failed to save authentication:", error);
+      console.error(
+        "Failed to save authentication:",
+        error
+      );
     }
   };
 
+  // Logout
   const logout = () => {
-    setAuthState({
-      token: null,
-      user: null,
-    });
+    setAuthState(EMPTY_AUTH);
 
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
   };
 
   const isAuthenticated = Boolean(auth?.token);
