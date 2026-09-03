@@ -320,6 +320,47 @@ export default function NotificationBell({
                     );
                   }
 
+                  if (item.type === "vehicle_assigned") {
+                    return (
+                      <div
+                        key={item.id}
+                        className={`flex gap-3 border-b border-slate-100 px-4 py-4 ${
+                          unread ? "bg-blue-50/50" : "bg-white"
+                        }`}
+                      >
+                        <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-blue-50 text-[#1E3A5F]">
+                          <Car size={18} />
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-sm font-bold text-[#0F2440]">
+                              {item.title || "Vehicle assigned"}
+                            </p>
+
+                            {unread && (
+                              <span
+                                className="mt-1 size-2 shrink-0 rounded-full bg-blue-500"
+                                aria-label="Unread"
+                              />
+                            )}
+                          </div>
+
+                          <p className="mt-1 text-sm text-slate-500">
+                            {item.message ||
+                              `${item.vehicle_registration || "A vehicle"} assigned to ${
+                                item.driver_name || "a driver"
+                              }.`}
+                          </p>
+
+                          <p className="mt-2 text-[11px] text-slate-400">
+                            {item.time || formatDate(item.created_at)}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+
                   return (
                     <div
                       key={item.id}
