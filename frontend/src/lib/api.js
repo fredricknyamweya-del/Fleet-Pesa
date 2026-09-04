@@ -1,16 +1,38 @@
-
 import axios from "axios";
 
-// API CONFIGURATION
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
-// AXIOS INSTANCE
+
+
+function getCookie(name) {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const cookies = document.cookie.split("; ");
+
+  const cookie = cookies.find(
+    (row) => row.startsWith(`${name}=`)
+  );
+
+  if (!cookie) {
+    return null;
+  }
+
+  return decodeURIComponent(cookie.substring(name.length + 1)
+  );
+}
+
 
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
+
+  
+  withCredentials: true,
+
   headers: {
     Accept: "application/json",
     "Content-Type": "application/json",
@@ -18,57 +40,48 @@ export const api = axios.create({
 });
 
 
-// TOKEN STORAGE
 
-
-const ACCESS_TOKEN_KEY = "access_token";
-const REFRESH_TOKEN_KEY = "refresh_token";
-
-export function getAccessToken() {
-  return localStorage.getItem(ACCESS_TOKEN_KEY);
-}
-
-export function getRefreshToken() {
-  return localStorage.getItem(REFRESH_TOKEN_KEY);
-}
-
-export function saveTokens(accessToken, refreshToken) {
-  if (accessToken) {
-    localStorage.setItem(ACCESS_TOKEN_KEY, accessToken);
-  }
-
-  if (refreshToken) {
-    localStorage.setItem(REFRESH_TOKEN_KEY, refreshToken);
-  }
-}
-
-export function clearTokens() {
-  localStorage.removeItem(ACCESS_TOKEN_KEY);
-  localStorage.removeItem(REFRESH_TOKEN_KEY);
+function getErrorMessage(error, fallbackMessage) {
+  return (
+    error?.response?.data?.message ||
+    error?.response?.data?.error ||
+    error?.response?.data?.msg ||
+    error?.message ||
+    fallbackMessage
+  );
 }
 
 
 
 api.interceptors.request.use(
-  (config) => {const token = getAccessToken();
-
+  (config) => {
     
-    console.log(
-      "[API AUTH]",
-      config.method?.toUpperCase(),
-      config.url,
-      token
-        ? `TOKEN PRESENT (${token.length} chars)`
-        : "NO TOKEN"
+
+    const isRefreshRequest =
+      config.url === "/auth/refresh";
+
+    const csrfCookieName = isRefreshRequest
+      ? "csrf_refresh_token"
+      : "csrf_access_token";
+
+    const csrfToken = getCookie(
+      csrfCookieName
     );
 
-    if (token) {
+    if (csrfToken) {
       config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${token}`;
+
+      config.headers["X-CSRF-TOKEN"] =
+        csrfToken;
     }
+
+    console.log(
+      "[API REQUEST]",
+      config.method?.toUpperCase(), config.url);
 
     return config;
   },
+
   (error) => {
     return Promise.reject(error);
   }
@@ -82,12 +95,8 @@ api.interceptors.response.use(
   },
 
   (error) => {
-    const status = error?.response?.status;
-
-    console.error(
-      "[API ERROR]", error?.config?.method?.toUpperCase(),
-      error?.config?.url,"STATUS:", status, "DATA:",
-      error?.response?.data
+    console.error("[API ERROR]", error?.config?.method?.toUpperCase(), error?.config?.url,
+      "STATUS:",  error?.response?.status, "DATA:", error?.response?.data
     );
 
     return Promise.reject(error);
@@ -95,90 +104,79 @@ api.interceptors.response.use(
 );
 
 
-// ERROR HELPER
-
-function getErrorMessage(error, fallbackMessage) {
-  return (
-    error?.response?.data?.message || error?.response?.data?.error || error?.response?.data?.msg ||
-    error?.message || fallbackMessage);
-}
-
-// AUTH - LOGIN
 
 export async function login(credentials) {
   try {
-    const response = await api.post("/auth/login",credentials);
-
-    const data = response.data;
-
-    const accessToken =
-      data?.access_token ||data?.token;
-
-    const refreshToken =
-      data?.refresh_token;
-
-    if (!accessToken) {
-      throw new Error("Login succeeded but the backend did not return an authentication token.");}
-
-    saveTokens(accessToken,refreshToken);
-
-    console.log("[AUTH] Login successful. Access token saved:", `${accessToken.length} chars`);
-
-    return data;
-  } catch (error) {
-    throw new Error(getErrorMessage(error, "Unable to log in. Please try again."));
-  }
-}
-
-// AUTH - SIGN UP
-
-export async function register(userData) {
-  try {
-    const response = await api.post("/auth/signup", userData);
-
-    const data = response.data;
-
-    const accessToken = data?.access_token || data?.token;
-
-    const refreshToken = data?.refresh_token;
-
-    if (accessToken) {
-      saveTokens( accessToken, refreshToken );
-    }
-
-    return data;
-  } catch (error) {
-    throw new Error( getErrorMessage( error, "Unable to create account. Please try again."));
-  }
-}
-
-// AUTH - FORGOT PASSWORD
-
-export async function forgotPassword(phone) {
-  try {
-    const response = await api.post( "/auth/forgot-password", { phone,});
+    const response = await api.post("/auth/login", credentials);
+    console.log("[AUTH] Login successful.");
 
     return response.data;
   } catch (error) {
     throw new Error(
       getErrorMessage(
         error,
-        "Unable to process password reset request."
+        "Unable to log in. Please try again."
       )
     );
   }
 }
 
 
-// AUTH - RESET PASSWORD
+
+export async function logout() {
+  try {
+   
+    const response = await api.post("/auth/logout");
+    console.log("[AUTH] Logout request successful.");
+    return response.data;
+  } catch (error) {
+    console.error("[AUTH] Logout failed:", error);
+
+    throw new Error(
+      getErrorMessage( error, "Unable to log out.")
+    );
+  }
+}
+
+
+
+export async function register(userData) {
+  try {
+    const response = await api.post("/auth/signup", userData);
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(
+        error,
+        "Unable to create account. Please try again."
+      )
+    );
+  }
+}
+
+
+
+export async function forgotPassword(phone) {
+  try {
+    const response = await api.post("/auth/forgot-password",{ phone });
+
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getErrorMessage(error,"Unable to process password reset request.")
+    );
+  }
+}
+
+
 
 export async function resetPassword(
   resetToken,
   newPassword
 ) {
   try {
-    const response = await api.post(
-      "/auth/reset-password",
+    const response = await api.post("/auth/reset-password",
       {
         reset_token: resetToken,
         new_password: newPassword,
@@ -196,14 +194,13 @@ export async function resetPassword(
   }
 }
 
-// AUTH - UPDATE PROFILE
 
-export async function updateProfile(profileData) {
+
+export async function updateProfile(
+  profileData
+) {
   try {
-    const response = await api.put(
-      "/auth/profile",
-      profileData
-    );
+    const response = await api.put("/auth/profile",profileData);
 
     return response.data;
   } catch (error) {
@@ -216,12 +213,9 @@ export async function updateProfile(profileData) {
   }
 }
 
-// AUTH - UPDATE PASSWORD
 
 
-export async function updatePassword(
-  currentPassword,
-  newPassword
+export async function updatePassword(currentPassword, newPassword
 ) {
   try {
     const response = await api.put(
@@ -243,17 +237,14 @@ export async function updatePassword(
   }
 }
 
-// DRIVER ASSIGNMENTS
+
 
 export async function getDriverAssignments(
   params = {}
 ) {
   try {
-    const response = await api.get(
-      "/driver-assignments",
-      {
-        params,
-      }
+    const response = await api.get("/driver-assignments",
+      { params }
     );
 
     return response.data;
@@ -267,10 +258,11 @@ export async function getDriverAssignments(
   }
 }
 
-export async function createDriverAssignment(data) {
+export async function createDriverAssignment(
+  data
+) {
   try {
-    const response = await api.post(
-      "/driver-assignments",
+    const response = await api.post("/driver-assignments",
       data
     );
 
@@ -287,8 +279,7 @@ export async function createDriverAssignment(data) {
 
 export async function getDriverAssignment(id) {
   try {
-    const response = await api.get(
-      `/driver-assignments/${id}`
+    const response = await api.get(`/driver-assignments/${id}`
     );
 
     return response.data;
@@ -357,7 +348,7 @@ export async function unassignDriver(id) {
   }
 }
 
-// VEHICLE DRIVER HISTORY
+
 
 export async function getVehicleDriverHistory(
   vehicleId
@@ -378,15 +369,15 @@ export async function getVehicleDriverHistory(
   }
 }
 
-// VEHICLES
 
-export async function getVehicles(params = {}) {
+
+export async function getVehicles(
+  params = {}
+) {
   try {
     const response = await api.get(
       "/vehicles",
-      {
-        params,
-      }
+      { params }
     );
 
     return response.data;
@@ -473,7 +464,7 @@ export async function deleteVehicle(vehicleId) {
   }
 }
 
-// VEHICLE REMITTANCE HISTORY
+
 
 export async function getVehicleRemittanceHistory(
   vehicleId
@@ -495,7 +486,6 @@ export async function getVehicleRemittanceHistory(
 }
 
 
-// REMITTANCES
 
 export async function getRemittances(
   params = {}
@@ -503,9 +493,7 @@ export async function getRemittances(
   try {
     const response = await api.get(
       "/remittances",
-      {
-        params,
-      }
+      { params }
     );
 
     return response.data;
@@ -615,7 +603,7 @@ export async function promptRemittance(
   }
 }
 
-// FARE PAYMENTS
+
 
 export async function createFarePayment(data) {
   try {
@@ -675,9 +663,10 @@ export async function updateFarePayment(
   }
 }
 
-// M-PESA CALLBACK
 
-export async function farePaymentCallback(data) {
+export async function farePaymentCallback(
+  data
+) {
   try {
     const response = await api.post(
       "/fare-payments/mpesa-callback",
@@ -695,12 +684,11 @@ export async function farePaymentCallback(data) {
   }
 }
 
-// HEALTH CHECK
+
 
 export async function healthCheck() {
   try {
     const response = await api.get("/");
-
     return response.data;
   } catch (error) {
     throw new Error(
@@ -713,16 +701,5 @@ export async function healthCheck() {
 }
 
 
-// LOGOUT
-
-export function logout() {
-  clearTokens();
-}
-
-// DEFAULT EXPORT
 
 export default api;
-
-
-
-

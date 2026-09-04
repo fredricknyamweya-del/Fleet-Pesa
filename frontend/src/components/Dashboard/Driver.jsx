@@ -705,8 +705,6 @@
 // }
 
 
-
-
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -718,13 +716,9 @@ import {
   X,
 } from "lucide-react";
 
-import {
-  api,
-  getAccessToken,
-} from "../../lib/api.js";
-
 import { useAuth } from "../../context/AuthContext.jsx";
 import { useTheme } from "../../context/ThemeContext.jsx";
+import { api } from "../../lib/api.js";
 
 import StatusBadge from "../shared/StatusBadge.jsx";
 import { StatCard } from "../shared/StatCard";
@@ -769,13 +763,6 @@ export default function Driver() {
 
   const quickAmounts = [1500, 3000, 4500];
 
-  /*
-   * ============================================================
-   * LOAD VEHICLES FROM FLASK BACKEND
-   * GET /vehicles
-   * ============================================================
-   */
-
   useEffect(() => {
     let mounted = true;
 
@@ -786,24 +773,23 @@ export default function Driver() {
 
         const response = await api.get("/vehicles");
 
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
-        /*
-         * We support the common response shapes without
-         * changing the backend contract.
-         */
-        const vehicleData =
-          Array.isArray(response.data)
-            ? response.data
-            : Array.isArray(response.data?.vehicles)
-              ? response.data.vehicles
-              : Array.isArray(response.data?.data)
-                ? response.data.data
-                : [];
+        const vehicleData = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data?.vehicles)
+            ? response.data.vehicles
+            : Array.isArray(response.data?.data)
+              ? response.data.data
+              : [];
 
         setVehicles(vehicleData);
       } catch (err) {
-        if (!mounted) return;
+        if (!mounted) {
+          return;
+        }
 
         console.error("Failed to load vehicles:", err);
 
@@ -821,25 +807,12 @@ export default function Driver() {
       }
     }
 
-    /*
-     * Only load if we have an authentication token.
-     */
-    if (getAccessToken()) {
-      loadVehicles();
-    } else {
-      setVehiclesLoading(false);
-    }
+    loadVehicles();
 
     return () => {
       mounted = false;
     };
   }, []);
-
-  /*
-   * ============================================================
-   * SUCCESS MESSAGE
-   * ============================================================
-   */
 
   useEffect(() => {
     if (!successMessage) {
@@ -853,40 +826,29 @@ export default function Driver() {
     return () => window.clearTimeout(timeoutId);
   }, [successMessage]);
 
-  /*
-   * ============================================================
-   * CLEAR ROUTER SUCCESS STATE
-   * ============================================================
-   */
-
   useEffect(() => {
-    if (location.state?.success) {
-      navigate(location.pathname, {
-        replace: true,
-        state: {},
-      });
+    if (!location.state?.success) {
+      return;
     }
+
+    navigate(location.pathname, {
+      replace: true,
+      state: {},
+    });
   }, [location, navigate]);
 
-  /*
-   * ============================================================
-   * FIND DRIVER'S ASSIGNED VEHICLES
-   * ============================================================
-   *
-   * This uses the fields your existing frontend was already
-   * expecting: driver_name, id, status, plate_number, type.
-   *
-   * If your Flask Vehicle model returns different field names,
-   * send me vehicle_routes.py and the Vehicle model and I will
-   * map them exactly.
-   */
+  useEffect(() => {
+    if (user?.phone) {
+      setPaymentPhone(user.phone);
+    }
+  }, [user?.phone]);
 
   const assignedVehicles = useMemo(() => {
     if (!user || !vehicles.length) {
       return [];
     }
 
-    const driverName = user?.name;
+    const driverName = user.name;
 
     return vehicles.filter(
       (vehicle) =>
@@ -895,12 +857,6 @@ export default function Driver() {
         vehicle.driver_name === driverName
     );
   }, [user, vehicles]);
-
-  /*
-   * ============================================================
-   * STARTED VEHICLE
-   * ============================================================
-   */
 
   const startedVehicle = useMemo(() => {
     if (!assignedVehicles.length) {
@@ -918,12 +874,6 @@ export default function Driver() {
     return assignedVehicles[0];
   }, [assignedVehicles, startedVehicleId]);
 
-  /*
-   * ============================================================
-   * AMOUNT
-   * ============================================================
-   */
-
   function handleAmountChange(event) {
     const newAmount = event.target.value.replace(/\D/g, "");
 
@@ -938,20 +888,6 @@ export default function Driver() {
 
   const isAmountValid =
     /^\d+$/.test(amount) && Number(amount) > 0;
-
-  /*
-   * ============================================================
-   * VEHICLE ACTIVATION
-   * ============================================================
-   *
-   * IMPORTANT:
-   * Your app.py does NOT show a backend endpoint for activating
-   * a vehicle.
-   *
-   * Therefore this does NOT pretend there is one.
-   *
-   * We only select the vehicle locally for the current session.
-   */
 
   function handleActivateVehicle() {
     if (!startedVehicle) {
@@ -971,27 +907,6 @@ export default function Driver() {
       )
     );
   }
-
-  /*
-   * ============================================================
-   * REMITTANCE
-   * ============================================================
-   *
-   * Your Flask backend exposes:
-   *
-   * /remittances
-   * /remittances/<remittance_id>
-   * /remittances/<remittance_id>/prompt
-   *
-   * But app.py alone does not tell us the POST payload required
-   * by RemittanceList.
-   *
-   * Therefore the actual daily-remittance submission should not
-   * be guessed here.
-   *
-   * For now we show a clear error instead of silently pretending
-   * the payment succeeded.
-   */
 
   async function handleSubmit() {
     const cleanPhone = paymentPhone.replace(/\s/g, "");
@@ -1018,14 +933,8 @@ export default function Driver() {
     setStatus("processing");
 
     try {
-      /*
-       * Do NOT fake a successful payment.
-       *
-       * The exact RemittanceList POST contract is needed before
-       * we can safely send this request.
-       */
       throw new Error(
-        "Remittance API payload is not yet connected. Send remittance_routes.py so this request can be connected exactly to the Flask backend."
+        "Remittance API payload is not yet connected."
       );
     } catch (err) {
       console.error("Remittance error:", err);
@@ -1041,54 +950,37 @@ export default function Driver() {
     }
   }
 
-  /*
-   * ============================================================
-   * SUBMIT ANOTHER
-   * ============================================================
-   */
-
   function handleSubmitAnother() {
     setAmount("");
     setError("");
     setStatus("idle");
   }
 
-  /*
-   * ============================================================
-   * LOGOUT
-   * ============================================================
-   */
+  async function handleSignOut() {
+    setError("");
 
-  function handleSignOut() {
-    logout();
+    try {
+      await logout();
 
-    navigate("/login", {
-      replace: true,
-      state: {
-        success: "Successfully signed out.",
-      },
-    });
+      navigate("/login", {
+        replace: true,
+        state: {
+          success: "Successfully signed out.",
+        },
+      });
+    } catch (err) {
+      console.error("Logout failed:", err);
+
+      setError(
+        err?.message || "Unable to sign out. Please try again."
+      );
+    }
   }
-
-  /*
-   * ============================================================
-   * NOTIFICATIONS
-   * ============================================================
-   */
 
   function handleNotificationClick() {
     setShowNotifications((current) => !current);
     setNotificationCount(0);
   }
-
-  /*
-   * ============================================================
-   * SUCCESS RECEIPT
-   * ============================================================
-   *
-   * This will only appear after a real backend response sets
-   * status to "success".
-   */
 
   if (status === "success") {
     return (
@@ -1150,12 +1042,6 @@ export default function Driver() {
       </main>
     );
   }
-
-  /*
-   * ============================================================
-   * MAIN DRIVER PAGE
-   * ============================================================
-   */
 
   return (
     <div className="driver-page">
@@ -1230,6 +1116,16 @@ export default function Driver() {
                 title="Settings"
               >
                 <Settings size={16} />
+              </button>
+
+              <button
+                className="driver-theme-toggle"
+                type="button"
+                onClick={handleSignOut}
+                aria-label="Sign out"
+                title="Sign out"
+              >
+                Sign out
               </button>
             </div>
           </div>
@@ -1529,3 +1425,5 @@ export default function Driver() {
     </div>
   );
 }
+
+

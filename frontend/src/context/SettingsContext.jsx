@@ -32,7 +32,6 @@
 
 
 
-
 import {
   createContext,
   useContext,
@@ -46,24 +45,31 @@ import {
 
 import { useAuth } from "./AuthContext.jsx";
 
-const SettingsContext = createContext(null);
+const SettingsContext =
+  createContext(null);
 
-export function SettingsProvider({ children }) {
+// ============================================================
+// SETTINGS PROVIDER
+// ============================================================
+
+export function SettingsProvider({
+  children,
+}) {
   const {
-    token,
     user,
     setAuth,
   } = useAuth();
 
-  const [state, setState] = useState({
-    loading: false,
-    error: "",
-    success: "",
-  });
+  const [state, setState] =
+    useState({
+      loading: false,
+      error: "",
+      success: "",
+    });
 
-  // ============================================================
+  // ==========================================================
   // UPDATE PROFILE
-  // ============================================================
+  // ==========================================================
 
   async function saveProfile(values) {
     setState({
@@ -73,17 +79,22 @@ export function SettingsProvider({ children }) {
     });
 
     try {
-      const response = await updateProfile(values);
+      const response =
+        await updateProfile(values);
 
-      // Backend should return:
-      //
-      // {
-      //   message: "...",
-      //   user: {...}
-      // }
+      /*
+       * Expected backend response:
+       *
+       * {
+       *   message: "...",
+       *   user: {...}
+       * }
+       */
 
       const updatedUser =
-        response?.user || response?.data?.user;
+        response?.user ??
+        response?.data?.user ??
+        null;
 
       if (!updatedUser) {
         throw new Error(
@@ -91,16 +102,22 @@ export function SettingsProvider({ children }) {
         );
       }
 
-      // Keep AuthContext synchronized
+      /*
+       * Update AuthContext.
+       *
+       * No token is needed because authentication
+       * is handled by the HttpOnly cookie.
+       */
+
       setAuth({
-        token,
         user: updatedUser,
       });
 
       setState({
         loading: false,
         error: "",
-        success: "Profile updated successfully.",
+        success:
+          "Profile updated successfully.",
       });
 
       return updatedUser;
@@ -119,9 +136,9 @@ export function SettingsProvider({ children }) {
     }
   }
 
-  // ============================================================
+  // ==========================================================
   // UPDATE PASSWORD
-  // ============================================================
+  // ==========================================================
 
   async function savePassword(values) {
     setState({
@@ -132,13 +149,12 @@ export function SettingsProvider({ children }) {
 
     try {
       /*
-       * Expected values:
+       * Expected:
        *
        * {
        *   current_password: "...",
        *   new_password: "..."
        * }
-       *
        */
 
       await updatePassword(
@@ -149,7 +165,8 @@ export function SettingsProvider({ children }) {
       setState({
         loading: false,
         error: "",
-        success: "Password updated successfully.",
+        success:
+          "Password updated successfully.",
       });
     } catch (error) {
       const message =
@@ -166,9 +183,9 @@ export function SettingsProvider({ children }) {
     }
   }
 
-  // ============================================================
+  // ==========================================================
   // CLEAR MESSAGES
-  // ============================================================
+  // ==========================================================
 
   function clearSettingsMessages() {
     setState({
@@ -178,9 +195,9 @@ export function SettingsProvider({ children }) {
     });
   }
 
-  // ============================================================
+  // ==========================================================
   // CONTEXT VALUE
-  // ============================================================
+  // ==========================================================
 
   const value = {
     user,
@@ -191,18 +208,21 @@ export function SettingsProvider({ children }) {
   };
 
   return (
-    <SettingsContext.Provider value={value}>
+    <SettingsContext.Provider
+      value={value}
+    >
       {children}
     </SettingsContext.Provider>
   );
 }
 
 // ============================================================
-// HOOK
+// USE SETTINGS
 // ============================================================
 
 export function useSettings() {
-  const context = useContext(SettingsContext);
+  const context =
+    useContext(SettingsContext);
 
   if (!context) {
     throw new Error(

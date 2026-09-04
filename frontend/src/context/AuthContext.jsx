@@ -1,105 +1,176 @@
 import {
   createContext,
   useContext,
-  useMemo,
+  useEffect,
   useState,
 } from "react";
 
+import {
+  api,
+  login as apiLogin,
+  logout as apiLogout,
+} from "../lib/api.js";
+
 const AuthContext = createContext(null);
 
-const STORAGE_KEY = "fleetpesa_auth";
-const ACCESS_TOKEN_KEY = "access_token";
-
-const EMPTY_AUTH = {
-  token: null,
-  user: null,
-};
+// ============================================================
+// AUTH PROVIDER
+// ============================================================
 
 export function AuthProvider({ children }) {
-  const [auth, setAuthState] = useState(() => {
-    try {
-      const savedAuth = localStorage.getItem(STORAGE_KEY);
-      const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
+  const [user, setUser] = useState(null);
 
-      const parsedAuth = savedAuth
-        ? JSON.parse(savedAuth)
-        : {};
+  const [loading, setLoading] = useState(true);
 
-      return {
-        token: accessToken || parsedAuth?.token || null,
-        user: parsedAuth?.user || null,
-      };
-    } catch (error) {
-      console.error(
-        "Failed to restore authentication:",
-        error
-      );
+  // ==========================================================
+  // CHECK CURRENT USER
+  // ==========================================================
 
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(ACCESS_TOKEN_KEY);
+  useEffect(() => {
+    let mounted = true;
 
-      return EMPTY_AUTH;
-    }
-  });
+    async function loadCurrentUser() {
+      try {
+        /*
+         * The browser automatically sends the HttpOnly
+         * authentication cookie.
+         */
 
-  // Save authentication
-  const setAuth = (newAuth) => {
-    const token = newAuth?.token || null;
-    const user = newAuth?.user || null;
-
-    const authData = {
-      token,
-      user,
-    };
-
-    setAuthState(authData);
-
-    try {
-      // Store complete auth state
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify(authData)
-      );
-
-      // Store API access token
-      if (token) {
-        localStorage.setItem(
-          ACCESS_TOKEN_KEY,
-          token
+        const response = await api.get(
+          "/auth/me"
         );
-      } else {
-        localStorage.removeItem(
-          ACCESS_TOKEN_KEY
+
+        const authenticatedUser =
+          response?.data?.user ?? null;
+
+        if (mounted) {
+          setUser(authenticatedUser);
+        }
+      } catch (error) {
+        if (mounted) {
+          setUser(null);
+        }
+
+        if (error?.response?.status === 401) {
+          console.log(
+            "[AUTH] No active session."
+          );
+        } else {
+          console.error(
+            "[AUTH] Failed to check authentication:",
+            error
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadCurrentUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // ==========================================================
+  // LOGIN
+  // ==========================================================
+
+  async function login(credentials) {
+    try {
+      setLoading(true);
+
+      const response = await apiLogin(
+        credentials
+      );
+
+      const loggedInUser =
+        response?.user ?? null;
+
+      if (!loggedInUser) {
+        throw new Error(
+          "Login succeeded but no user was returned."
         );
       }
+
+      setUser(loggedInUser);
+
+      return loggedInUser;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // ==========================================================
+  // SET AUTH
+  // ==========================================================
+
+  function setAuth(authData) {
+    if (!authData) {
+      setUser(null);
+      return;
+    }
+
+    setUser(
+      authData?.user ?? null
+    );
+  }
+
+  // ==========================================================
+  // LOGOUT
+  // ==========================================================
+
+  async function logout() {
+    try {
+      /*
+       * HttpOnly cookies are automatically sent by Axios
+       * because withCredentials: true is enabled in api.js.
+       */
+
+      await apiLogout();
+
+      console.log(
+        "[AUTH] Logout successful."
+      );
+
+      setUser(null);
+
+      return true;
     } catch (error) {
       console.error(
-        "Failed to save authentication:",
+        "[AUTH] Logout request failed:",
         error
       );
+
+      /*
+       * Clear local React state even if the server
+       * request failed.
+       */
+
+      setUser(null);
+
+      return false;
     }
+  }
+
+  // ==========================================================
+  // CONTEXT VALUE
+  // ==========================================================
+
+  const value = {
+    user,
+    loading,
+    isAuthenticated: Boolean(user),
+
+    login,
+    logout,
+
+    setAuth,
+    setUser,
   };
-
-  // Logout
-  const logout = () => {
-    setAuthState(EMPTY_AUTH);
-
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(ACCESS_TOKEN_KEY);
-  };
-
-  const isAuthenticated = Boolean(auth?.token);
-
-  const value = useMemo(
-    () => ({
-      token: auth?.token || null,
-      user: auth?.user || null,
-      isAuthenticated,
-      setAuth,
-      logout,
-    }),
-    [auth, isAuthenticated]
-  );
 
   return (
     <AuthContext.Provider value={value}>
@@ -108,8 +179,14 @@ export function AuthProvider({ children }) {
   );
 }
 
+// ============================================================
+// USE AUTH
+// ============================================================
+
 export function useAuth() {
-  const context = useContext(AuthContext);
+  const context = useContext(
+    AuthContext
+  );
 
   if (!context) {
     throw new Error(
@@ -121,3 +198,4 @@ export function useAuth() {
 }
 
 export default AuthContext;
+

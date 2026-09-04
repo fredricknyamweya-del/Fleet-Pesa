@@ -7,7 +7,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme } from "../context/ThemeContext.jsx";
 
 export function normalizePhone(value) {
-  return value.replace(/\s/g, "");
+  return String(value || "").replace(/\s/g, "");
 }
 
 export default function LoginPage() {
@@ -20,7 +20,6 @@ export default function LoginPage() {
   const [role, setRole] = useState("owner");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
-
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,45 +28,50 @@ export default function LoginPage() {
     location.state?.success || ""
   );
 
-
-  // SUCCESS MESSAGE
+  
 
   useEffect(() => {
-    if (!success) return undefined;
+    if (!success) return;
 
     const timeoutId = window.setTimeout(() => {
       setSuccess("");
     }, 5000);
 
-    return () => window.clearTimeout(timeoutId);
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
   }, [success]);
 
-  // Remove navigation state after reading it
+  
   useEffect(() => {
-    if (location.state?.success) {
-      navigate(location.pathname, {
-        replace: true,
-        state: {},
-      });
-    }
-  }, [location, navigate]);
+    if (!location.state?.success) return;
 
-  // VALIDATION
+    navigate(location.pathname, {
+      replace: true,
+      state: {},
+    });
+  }, [
+    location.pathname,
+    location.state?.success,
+    navigate,
+  ]);
+
 
   const validate = () => {
     const cleanPhone = normalizePhone(phone);
 
     if (!/^(07|01)\d{8}$/.test(cleanPhone)) {
-         return "Phone number must be 10 digits and start with 07 or 01.";
+      return "Phone number must be 10 digits and start with 07 or 01.";
     }
 
-
     if (!password) {
-      return "Please enter your password";
+      return "Please enter your password.";
     }
 
     if (
-      !/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(password)
+      !/^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/.test(
+        password
+      )
     ) {
       return "Password must be at least 8 characters and include letters, numbers, and special characters.";
     }
@@ -75,98 +79,92 @@ export default function LoginPage() {
     return "";
   };
 
-  // ROLE
+  
 
   const handleRoleChange = (newRole) => {
     setRole(newRole);
     setError("");
   };
 
+ 
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    if (loading) return;
+
+    const validationError = validate();
+
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    const cleanPhone = normalizePhone(phone);
+
+    const credentials = {
+      phone: cleanPhone,
+      password,
+      role,
+    };
+
+    try {
+      const responseData = await login(credentials);
+
+      const authenticatedUser = responseData?.user;
+
+      if (!authenticatedUser) {
+        throw new Error(
+          "Login succeeded, but the server did not return user information."
+        );
+      }
+      setAuth({
+        user: authenticatedUser,
+      });
+
+      const authenticatedRole = String(
+        authenticatedUser.role || role
+      ).toLowerCase();
+
+    
+      setPassword("");
 
 
-  const handleSubmit = async (e) => {
-  e.preventDefault();
+      if (authenticatedRole === "driver") {
+        navigate("/driver/remittance", {
+          replace: true,
+        });
 
-  if (loading) return;
+        return;
+      }
 
-  const validationError = validate();
+      if (authenticatedRole === "owner") {
+        navigate("/owner/dashboard", {
+          replace: true,
+        });
 
-  if (validationError) {
-    setError(validationError);
-    return;
-  }
+        return;
+      }
 
-  setError("");
-  setLoading(true);
+     
+      setAuth(null);
 
-  const cleanPhone = normalizePhone(phone);
-
-  const credentials = {
-    phone: cleanPhone,
-    password,
-    role: role.toLowerCase(),
-  };
-
-  console.log("[LOGIN CREDENTIALS]", {
-    phone: credentials.phone,
-    role: credentials.role,
-    passwordLength: credentials.password.length,
-  });
-
-  try {
-    const response = await login(credentials);
-
-    console.log("[LOGIN RESPONSE]", response);
-
-    const token =
-      response?.access_token ||
-      response?.token ||
-      response?.data?.access_token ||
-      response?.data?.token;
-
-    const user =
-      response?.user ||
-      response?.data?.user ||
-      null;
-
-    if (!token) {
-      throw new Error(
-        "Login succeeded but the backend did not return an authentication token."
+      setError(
+        "Your account has an unsupported account type."
       );
+    } catch (err) {
+      console.error("[LOGIN ERROR]", err);
+      setError(
+        err?.message ||
+          "Sign in failed. Please check your details and try again."
+      );
+    } finally {
+      setLoading(false);
     }
-
-    setAuth({
-      token,
-      user: user || {
-        phone: cleanPhone,
-        role: credentials.role,
-      },
-    });
-
-    if (credentials.role === "driver") {
-      navigate("/driver/remittance", {
-        replace: true,
-      });
-    } else {
-      navigate("/owner/dashboard", {
-        replace: true,
-      });
-    }
-  } catch (err) {
-    console.error("[LOGIN ERROR]", err);
-
-    const message =
-      err?.response?.data?.message ||
-      err?.response?.data?.error ||
-      err?.message ||
-      "Sign in failed. Check your details and try again.";
-
-    setError(message);
-  } finally {
-    setLoading(false);
-  }
-};
-  // UI
+  };
 
   return (
     <div
@@ -176,9 +174,7 @@ export default function LoginPage() {
           : "login-page-light"
       }`}
     >
-      {/* ======================================================
-          LOGO
-      ====================================================== */}
+      
 
       <div
         className={`login-logo-frame mb-8 rounded-[22px] p-1.5 shadow-[0_6px_16px_rgba(16,40,68,0.08)] ring-1 ${
@@ -198,20 +194,13 @@ export default function LoginPage() {
         />
       </div>
 
-      {/* ======================================================
-          LOGIN CARD
-      ====================================================== */}
-
       <div
         className={`login-card w-full max-w-md rounded-2xl p-8 ${
           isDark
-            ? "bg-slate-900 border border-slate-700"
+            ? "border border-slate-700 bg-slate-900"
             : "bg-white"
         }`}
       >
-        {/* ====================================================
-            HEADING
-        ==================================================== */}
 
         <div className="text-center">
           <h1
@@ -237,10 +226,6 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* ====================================================
-            SUCCESS MESSAGE
-        ==================================================== */}
-
         {success && (
           <div
             className={`mb-4 rounded-lg border px-4 py-3 text-sm ${
@@ -253,10 +238,6 @@ export default function LoginPage() {
             {success}
           </div>
         )}
-
-        {/* ====================================================
-            ROLE SELECTOR
-        ==================================================== */}
 
         <div
           className={`mb-6 flex rounded-lg p-1 ${
@@ -272,10 +253,9 @@ export default function LoginPage() {
             role="tab"
             aria-selected={role === "owner"}
             onClick={() => handleRoleChange("owner")}
-            className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
-              role === "owner"
-                ? "selected"
-                : ""
+            disabled={loading}
+            className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              role === "owner" ? "selected" : ""
             }`}
           >
             Fleet Owner
@@ -286,29 +266,19 @@ export default function LoginPage() {
             role="tab"
             aria-selected={role === "driver"}
             onClick={() => handleRoleChange("driver")}
-            className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors ${
-              role === "driver"
-                ? "selected"
-                : ""
+            disabled={loading}
+            className={`auth-role-tab flex-1 rounded-md py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
+              role === "driver" ? "selected" : ""
             }`}
           >
             Driver
           </button>
         </div>
-
-        {/* ====================================================
-            FORM
-        ==================================================== */}
-
         <form onSubmit={handleSubmit} noValidate>
-          {/* ==================================================
-              PHONE
-          ================================================== */}
-
           <div className="mb-4">
             <label
               htmlFor="phone"
-              className={`mb-1.5 block text-xs font-semibold tracking-wide uppercase ${
+              className={`mb-1.5 block text-xs font-semibold uppercase tracking-wide ${
                 isDark
                   ? "text-slate-400"
                   : "text-slate-500"
@@ -324,8 +294,8 @@ export default function LoginPage() {
               inputMode="numeric"
               autoComplete="tel"
               value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
+              onChange={(event) => {
+                setPhone(event.target.value);
                 setError("");
               }}
               placeholder="0712345678"
@@ -337,15 +307,10 @@ export default function LoginPage() {
               }`}
             />
           </div>
-
-          {/* ==================================================
-              PASSWORD
-          ================================================== */}
-
           <div className="mb-2">
             <label
               htmlFor="password"
-              className={`mb-1.5 block text-xs font-semibold tracking-wide uppercase ${
+              className={`mb-1.5 block text-xs font-semibold uppercase tracking-wide ${
                 isDark
                   ? "text-slate-400"
                   : "text-slate-500"
@@ -365,8 +330,8 @@ export default function LoginPage() {
                 }
                 autoComplete="current-password"
                 value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
+                onChange={(event) => {
+                  setPassword(event.target.value);
                   setError("");
                 }}
                 placeholder="••••••••"
@@ -405,11 +370,6 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-
-          {/* ==================================================
-              FORGOT PASSWORD
-          ================================================== */}
-
           <button
             type="button"
             className={`forgot-password text-sm font-medium transition-colors ${
@@ -420,14 +380,10 @@ export default function LoginPage() {
             onClick={() =>
               navigate("/forgot-password")
             }
+            disabled={loading}
           >
             Forgot password?
           </button>
-
-          {/* ==================================================
-              ERROR
-          ================================================== */}
-
           {error && (
             <div
               className={`mt-3 rounded-lg border px-3 py-2 text-sm ${
@@ -440,15 +396,10 @@ export default function LoginPage() {
               {error}
             </div>
           )}
-
-          {/* ==================================================
-              SUBMIT
-          ================================================== */}
-
           <button
             type="submit"
             disabled={loading}
-            className="auth-primary-button w-full mt-6 bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white font-semibold py-3 rounded-lg transition-colors flex items-center justify-center gap-2"
+            className="auth-primary-button mt-6 flex w-full items-center justify-center gap-2 rounded-lg bg-slate-900 py-3 font-semibold text-white transition-colors hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {loading && (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -458,11 +409,6 @@ export default function LoginPage() {
               ? "Signing in..."
               : "Sign In"}
           </button>
-
-          {/* ==================================================
-              TRUST LINE
-          ================================================== */}
-
           <div
             className={`trust-line mt-4 flex items-center justify-center gap-2 text-center text-sm font-medium ${
               isDark
@@ -470,26 +416,12 @@ export default function LoginPage() {
                 : "text-slate-900"
             }`}
             style={{
-              fontFamily:
-                "Inter, sans-serif",
+              fontFamily: "Inter, sans-serif",
             }}
           >
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
-                <svg
-                  viewBox="0 0 20 20"
-                  className="h-2.5 w-2.5"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M5.5 10.5L8.5 13.5L14.5 7.5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                ✓
               </span>
               Secure
             </span>
@@ -500,20 +432,7 @@ export default function LoginPage() {
 
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
-                <svg
-                  viewBox="0 0 20 20"
-                  className="h-2.5 w-2.5"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M5.5 10.5L8.5 13.5L14.5 7.5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                ✓
               </span>
               Instant M-Pesa
             </span>
@@ -524,30 +443,12 @@ export default function LoginPage() {
 
             <span className="flex items-center gap-1.5 whitespace-nowrap">
               <span className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[#16A34A] text-white">
-                <svg
-                  viewBox="0 0 20 20"
-                  className="h-2.5 w-2.5"
-                  fill="none"
-                  aria-hidden="true"
-                >
-                  <path
-                    d="M5.5 10.5L8.5 13.5L14.5 7.5"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  />
-                </svg>
+                ✓
               </span>
               Built for Kenyan fleets
             </span>
           </div>
         </form>
-
-        {/* ====================================================
-            SIGN UP
-        ==================================================== */}
-
         <p
           className={`mt-6 text-center text-sm ${
             isDark
@@ -556,12 +457,12 @@ export default function LoginPage() {
           }`}
         >
           No account yet?{" "}
+
           <button
             type="button"
-            onClick={() =>
-              navigate("/signup")
-            }
-            className={`font-semibold hover:underline ${
+            onClick={() => navigate("/signup")}
+            disabled={loading}
+            className={`font-semibold hover:underline disabled:opacity-50 ${
               isDark
                 ? "text-white"
                 : "text-slate-900"
@@ -574,5 +475,3 @@ export default function LoginPage() {
     </div>
   );
 }
-
-

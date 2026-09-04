@@ -1,6 +1,7 @@
 import { CarFront, ClipboardList, Grid2X2, LogOut, Settings,Users} from 'lucide-react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext.jsx'
+import { logout } from '../../lib/api.js'
 
 const navigation = [
 	{ label: 'Dashboard', icon: Grid2X2, to: '/owner/dashboard' },
@@ -14,13 +15,22 @@ export function Sidebar() {
 	const { logout, user } = useAuth()
 	const initials = (user?.name || 'Fleet Owner').split(' ').map((part) => part[0]).join('').slice(0, 2).toUpperCase()
 
-	function handleSignOut() {
-		logout()
+	async function handleSignOut() {
+	try {
+		await logout()
+
 		navigate('/login', {
-			replace: true,
-			state: { success: 'Successfully signed out.' },
+		replace: true,
+		state: {
+			success: 'Successfully signed out.',
+		},
 		})
+	} catch (error) {
+		console.error('Sign out failed:', error)
 	}
+	}
+
+
 
 	return (
 		<aside className="sidebar">
